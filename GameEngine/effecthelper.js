@@ -6,6 +6,49 @@
  */
 GameEngine.EffectHelper = GameEngine.Object.extend({
 
+  rgbaFromColor : function(color) {
+    return 'rgba('+color.r+','+color.g+','+color.b+','+color.a+')';
+  },
+  
+  getTextImage: function(text, textColor, fontSize, size) {
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    
+    context.font = 'normal ' + fontSize + 'px sans-serif'; 
+    context.textBaseline = 'middle'; 
+    
+    var textSize = context.measureText(text);
+    
+    canvas.width = textSize.width;
+    canvas.height = size.height;
+
+    context.font = 'normal ' + fontSize + 'px sans-serif'; 
+    context.textBaseline = 'middle'; 
+    
+//    context.fillStyle = 'rgba(1.0, 0.0, 0.0, 0.0)';
+//    context.fillRect(0.0, 0.0, canvas.width, canvas.height);
+	
+    context.fillStyle = this.rgbaFromColor(textColor);
+    context.fillText(text, 0.0, size.height / 2.0);
+
+    return canvas.toDataURL();
+    
+//    var badBrowser = /iPad|iPhone|iPod/.test(navigator.platform) || navigator.userAgent.indexOf('MSIE') != -1 || navigator.userAgent.indexOf('Trident') != -1;
+//    if (badBrowser) {
+//      
+//    }
+    
+//    var margins = this.getMargins(context, {width: canvas.width, height: canvas.height});
+//    
+//    var canvas2 = document.createElement('canvas');
+//    var context2 = canvas2.getContext('2d');
+//    canvas2.width = canvas.width - (margins.left + margins.right);
+//    canvas2.height = canvas.height; 
+//    context2.drawImage(canvas, margins.left, 0.0, canvas.width, canvas2.height, 0.0, 0.0, canvas.width, canvas2.height);
+//    
+//    return canvas2.toDataURL();
+  },
+
   getShadowImage : function(canvasElementsOrImageNames, shadowOffset, shadowBlur, shadowColor, infoDictionary) {
     var IMAGE_MARGIN = 10;
 
@@ -27,9 +70,9 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
 
     //clear the canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     if (!shadowColor) {
-      shadowColor = "rgba( 0, 0, 0, 0.3)";
+      shadowColor = "rgba( 0, 0, 0, 0.3 )";
     }
 
     //set the shadow on the context
@@ -39,40 +82,30 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
     ctx.shadowBlur = shadowBlur;
 
     ctx.drawImage(imageCanvas, IMAGE_MARGIN, IMAGE_MARGIN);
-    
+
     // Remove the original image
-//    ctx.shadowBlur = 0.0;
-//    ctx.globalCompositeOperation = "destination-out";
-//    ctx.drawImage(imageCanvas, IMAGE_MARGIN, IMAGE_MARGIN);
-    
-    if (infoDictionary) {
-      infoDictionary["Canvas"] = canvas;
-    }
+    ctx.shadowBlur = 0.0;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.drawImage(imageCanvas, IMAGE_MARGIN, IMAGE_MARGIN);
 
     //return data url
     return canvas.toDataURL();
   },
-  
+
   getLuminosityImage: function(canvasElementsOrImageNames, color) {
     // First the image data of the combined images
     var imageCanvas = this.combinedImageCanvas(canvasElementsOrImageNames);
 
     //setup canvas and source image
     var canvas = document.createElement('canvas');
+    canvas.width = imageCanvas.width;
+    canvas.height = imageCanvas.height;
     var context = canvas.getContext('2d');
     
-    context.rect(0,0,canvas.width,canvas.height);
-    context.fillStyle = color;
-    context.fill();
-    
-    // Draw the image with a luminosity blend mode
-    context.globalCompositeOperation = "luminosity";
-    context.drawImage(imageCanvas, 0.0, 0.0);
-    
-    // Remove the surounding colour
-    context.globalCompositeOperation = "destination-in";
-    context.drawImage(imageCanvas, 0.0, 0.0);
-    
+    context.drawImage(imageCanvas, 0.0, 0.0 , imageCanvas.width, imageCanvas.height);
+
+    this.applyLuminocityColor(context, color, {width: canvas.width, height: canvas.height});
+
     return canvas.toDataURL();
   },
 
@@ -129,15 +162,12 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
         color,
         {width: canvas.width, height: canvas.height});
 
-    var finalImage = new Image();
-    finalImage.src = canvas.toDataURL("image/png");
-
     var finalCanvas = document.createElement('canvas');
     finalCanvas.width = canvasSize.width / 2.0;
     finalCanvas.height = canvasSize.height / 2.0;
     var finalContext = finalCanvas.getContext('2d');
 
-    finalContext.drawImage(finalImage, 0.0, 0.0, finalCanvas.width, finalCanvas.height);
+    finalContext.drawImage(canvas, 0.0, 0.0, finalCanvas.width, finalCanvas.height);
 
     var dataURL = finalCanvas.toDataURL();
 
@@ -193,20 +223,17 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
   },
 
   combinedImageCanvas: function(canvasElementsOrImageNames) {
-  
+
     var canvasElements = [];
     canvasElementsOrImageNames.forEach(function(canvasElementOrImageName) {
       if (typeof canvasElementOrImageName === "string") {
         canvasElements.push(getImageFromCache(canvasElementOrImageName));
-//        var cachedTexture = 
-        //cc.textureCache.getTextureForKey(canvasElementOrImageName);
-//        canvasElements.push(cachedTexture.getHtmlElementObj());
       }
       else {
         canvasElements.push(canvasElementOrImageName);
       }
     });
-  
+
     // First get the cached textures and the size
     var cachedTextures = [];
     var largestSize = {width: 0.0, height: 0.0};
@@ -231,7 +258,7 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
     canvasElements.forEach(function(canvasElement) {
       var x = (largestSize.width - canvasElement.width) / 2.0;
       var y = (largestSize.height - canvasElement.height) / 2.0;
-      
+
       //draw
       context.drawImage(canvasElement, x, y);
     });
@@ -260,6 +287,44 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
       else {
         data[i + 3] = 0;
       }
+    }
+    context.putImageData(imageData, 0, 0);
+  },
+  
+  getMargins: function(context, canvasSize) {
+    var imageData = context.getImageData(0,0, canvasSize.width, canvasSize.height);
+    var data = imageData.data;
+    
+    var left = Number.MAX_SAFE_INTEGER;
+    var right = 0;
+
+    for (var i = 0; i < data.length; i += 4) {
+      var hasColor = data[i + 3] !== 0;
+      if (hasColor) {
+        var x = (i / 4) % canvasSize.width;
+        if (x < left) {
+          left = x;
+        }
+        if (x > right) {
+          right = x;
+        }
+      }
+    }
+    
+    return {left: left, right: (canvasSize.width - right) - 1};
+  },
+  
+  applyLuminocityColor: function(context, color, canvasSize) {
+    var imageData = context.getImageData(0,0, canvasSize.width, canvasSize.height);
+    var data = imageData.data;
+
+    for (var i = 0; i < data.length; i += 4) {
+      var percent = (data[i] * 0.3086 + data[i + 1] * 0.6094 + data[i + 2] * 0.0820) / 255;
+//      (( + data[i + 1] + data[i + 2]) / 3) / 255;
+      data[i]     = percent * color.r; // red
+      data[i + 1] = percent * color.g; // green
+      data[i + 2] = percent * color.b; // blue
+//      data[i + 3] = data[i + 3] * 50; // alpha
     }
     context.putImageData(imageData, 0, 0);
   },

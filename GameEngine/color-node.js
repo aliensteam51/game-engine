@@ -87,8 +87,8 @@ GameEngine.ColorNode = GameEngine.Node.extend({
   /* WEBGL METHODS */
   
   setupGL: function(completion) {
-    var script1 = document.getElementById("color-node-fsh");
-    var script2 = document.getElementById("node-vsh");
+    var script1 = document.getElementById("color-node.fsh");
+    var script2 = document.getElementById("node.vsh");
     var scripts = [script1, script2];
     
     var superMethod = this._super;
@@ -96,7 +96,7 @@ GameEngine.ColorNode = GameEngine.Node.extend({
     // First load the shader scripts
     loadScripts(scripts, 0, function() {
       var gl = getGL();
-      program = createProgramFromScripts(getGL(), "color-node-fsh", "node-vsh");
+      program = createProgramFromScripts(getGL(), "color-node.fsh", "node.vsh");
       
       program.colorLocation = gl.getUniformLocation(program, "color");
       

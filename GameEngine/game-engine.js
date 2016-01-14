@@ -1,11 +1,13 @@
 GameEngine.SharedEngine = GameEngine.Object.extend({
   currentScene: null,
+  renderScenes: null,
   legacyCanvasMode: false,
   scheduledActions: null,
   
   init: function() {
     this._super();
     this.scheduledActions = {};
+    this.renderScenes = [];
   },
   
   start: function() {
@@ -20,13 +22,71 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       return;
     }
     
-    if (this.currentScene) {
-      this.currentScene.onExit();
+    var previousScene = this.currentScene;
+    
+//    if (this.currentScene) {
+//      this.currentScene.onExit();
+//    }
+    
+    var loadSprites = [];
+    
+    scene._children.forEach(function(child) {
+      if (!child.loaded) {
+        loadSprites.push(child);
+      }
+      child._children.forEach(function(subchild) {
+        if (!subchild.loaded) {
+          loadSprites.push(subchild);
+        }
+      });
+    });
+    
+    var loadCount = loadSprites.length;
+    var loadFunction = function(sprite) {
+      if (sprite) {
+        sprite._testLoadCallback = null;
+      }
+    
+      loadCount--;
+      console.log("loadCount", loadCount);
+      if (loadCount === 0) {
+        if (previousScene) {
+          var contentSize = previousScene.getContentSize();
+          previousScene.moveTo(0.5, {x: - contentSize.width, y: 0.0}, function() {
+            previousScene.onExit();
+            var renderScenes = this.renderScenes;
+            renderScenes.splice(renderScenes.indexOf(previousScene), 1);
+          }.bind(this));
+        }
+      
+        this.currentScene = scene;
+        scene.dirty = true;
+        scene.onEnter();
+        var contentSize = scene.getContentSize();
+        scene.setPosition({x: contentSize.width, y: 0.0});
+        scene.moveTo(0.5, {x: 0.0, y: 0.0});
+        this.renderScenes.push(scene);
+      }
+    }.bind(this);
+    
+    if (loadCount === 0) {
+      loadCount ++;
+      
+      loadFunction();
     }
     
-    this.currentScene = scene;
-    scene.dirty = true;
-    scene.onEnter();
+    loadSprites.forEach(function(loadSprite) {
+      if (!loadSprite.loaded) {
+        loadSprite._testLoadCallback = function() {
+          loadFunction(loadSprite);
+        };
+      }
+      else {
+        loadFunction(null);
+      }
+    }.bind(this));
+    
+    
     
   },
 
@@ -41,8 +101,17 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       if (currentScene) {
         currentScene.onTouchBegan(event);
         
-        currentScene.allChildren().forEach(function(node) {
+        currentScene._getRenderList().forEach(function(node) {
+          if (!node._touchEnabled) {
+//            console.log("IGNORING", node.imageName, node);
+            return;
+          }
+          else {
+            console.log("NOT IGNORING", node);
+          }
+        
           var position = node.positionInScene();
+          console.log("position", position);
           var contentSize = node._contentSize;
           var anchorPoint = node._anchorPoint;
           position.x -= contentSize.width * anchorPoint.x;
@@ -139,38 +208,52 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
   },
   
   render: function() {
-    var currentScene = this.currentScene;
-    if (currentScene && currentScene.dirty) {
-      if (this.legacyCanvasMode) {
-        this.renderCanvas();
-      }
-      else {
-        this.renderGL();
-      }
-      this.currentScene.dirty = false;
-    }
+//    console.log("RENDER SCENES", this.renderScenes);
+//    .forEach(function(scene) {
+//      if (scene /*&& scene.dirty*/) {
+        if (this.legacyCanvasMode) {
+          this.renderCanvas();
+        }
+        else {
+          this.renderGL();
+        }
+//        scene.dirty = false;
+//      }
+//    }.bind(this));
   },
 
   renderGL: function() {
     var gl = getGL();
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);      // Clear the color as well as the depth buffer.
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    
+//    gl.enable(gl.SCISSOR_TEST);
+//    gl.scissor(0.0, 0.0, 1024.0, 768.0);
   
-    var currentScene = this.currentScene;
-    if (currentScene) {
-      var backgroundColor = currentScene.backgroundColor;
-      gl.clearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
+//    var currentScene = this.currentScene;
+//    if (currentScene) {
+
+      this.renderScenes.forEach(function(scene) {
+        var children = scene._getRenderList();
+        children.forEach(function(node) {
+          node.render();
+          node.draw();
+        });
+      });
+//      var backgroundColor = currentScene.backgroundColor;
+//      gl.clearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
       
       // Sort opaque, not opaque
-      var children = currentScene.allChildren();
-      var sortedChildren = children.sort(function(node1, node2) {
-        return  node1.zIndex - node2.zIndex;
-      });
-      sortedChildren.forEach(function(node) {
-        node.render();
-        node.draw();
-      });
-    }
+//      console.log("TEST", );
+
+      
+      
+//      var children = currentScene._getRenderList();
+//      children.forEach(function(node) {
+//        node.render();
+//        node.draw();
+//      });
+//    }
   
     gl.flush();
   },

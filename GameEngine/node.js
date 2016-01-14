@@ -70,6 +70,9 @@ GameEngine.Node = GameEngine.Object.extend({
   animationKeys: null,
   doesDraw: false,
   _animationTimers: null,
+  _touchEnabled: false,
+  loaded: true,
+  _clipsToBounds: false,
   
   
   /**
@@ -83,21 +86,24 @@ GameEngine.Node = GameEngine.Object.extend({
     
     this.animationKeys = [];
     this._animationTimers = [];
-//    this.updateMatrixes();
     
     this._children = [];
+    
+    this.updateMatrix();
     
     this.setup(contentSize, loadCallback);
   },
   
   setup: function(contentSize, loadCallback) {
     this.load(function() {
-      if (loadCallback) {
-        loadCallback();
-      }
-      
       if (contentSize) {
         this.setContentSize(contentSize);
+      }
+      
+      this._update();
+      
+      if (loadCallback) {
+        loadCallback();
       }
     }.bind(this));
   },
@@ -124,6 +130,18 @@ GameEngine.Node = GameEngine.Object.extend({
     });
   },
   
+  convertScenePosition: function(scenePosition) {
+    var position = this.getPosition();
+    var positionInScene = this.positionInScene();
+    var contentSize = this.getContentSize();
+    var anchorPoint = this.getAnchorPoint();
+    
+    positionInScene.x -= contentSize.width * anchorPoint.x;
+    positionInScene.y -= contentSize.height * anchorPoint.y;
+    
+    return {x: scenePosition.x - positionInScene.x, y: scenePosition.y - positionInScene.y};
+  },
+  
   positionInScene: function() {
     var parent = this.parent;
     if (parent) {
@@ -135,21 +153,31 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   convertToScene: function(position) {
+//    console.log("CONVERT TO SCENE", position);
     var parent = this.parent;
     if (parent) {
       var myPosition = this.getPosition();
-      parent.convertToScene({x: myPosition.x + position.x, y: myPosition.y + position.y});
+      var contentSize = this.getContentSize();
+      var anchorPoint = this.getAnchorPoint();
+      myPosition.x -= contentSize.width * anchorPoint.x;
+      myPosition.y -= contentSize.height * anchorPoint.y;
+//      console.log("RETURNING", parent.convertToScene({x: myPosition.x + position.x, y: myPosition.y + position.y}));
+      return parent.convertToScene({x: myPosition.x + position.x, y: myPosition.y + position.y});
     }
     else {
+//      console.log("RETURNING [0]", {x: position.x, y: position.y});
       return {x: position.x, y: position.y};
     }
   },
   
   removeFromParent: function() {
-    var children = this.parent.children;
-    var index = children.indexOf(this);
-    if (index !== -1) {
-      children.splice(index, 1);
+    var parent = this.parent;
+    if (parent) {
+      var children = parent._children;
+      var index = children.indexOf(this);
+      if (index !== -1) {
+        children.splice(index, 1);
+      }
     }
   },
   
@@ -172,9 +200,10 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example node.setContentSize({width: 100.0, height: 100.0})
    */
+  clipRect: null,
   setContentSize: function(contentSize) {
     var currentContentSize = this._contentSize;
-    if (currentContentSize.width === contentSize.width && currentContentSize.height === contentSize.height) {
+    if (currentContentSize.width === contentSize.width && currentContentSize.height === contentSize.height && this.rectangleArray) {
       return;
     }
   
@@ -191,6 +220,56 @@ GameEngine.Node = GameEngine.Object.extend({
     
     this.updateMatrix();
     this._update();
+  },
+  
+  _updateContent: function(clipRect) {
+  
+  },
+  
+  setTouchEnabled: function(enabled) {
+    this._touchEnabled = enabled;
+  },
+  
+  isTouchEnabled: function() {
+    return this._touchEnabled;
+  },
+  
+  _renderList: null,
+  
+  _getRenderList: function() {
+//    if (!this._renderList) {
+      var children = this._children.slice();
+      children.push(this);
+      children = children.sort(function(node1, node2) {
+        if (node1 === this) {
+          return node2.zIndex > -1 ? -1 : 1;
+        }
+        else if (node2 === this) {
+          return node1.zIndex > -1 ? 1 : -1;
+        }
+        
+//        if (node1.zIndex === node2.zIndex) {
+//          return children.indexOf(node1) - children.indexOf(node2);
+//        }
+        
+        return node1.zIndex - node2.zIndex;
+      }.bind(this));
+      var finalList = [];
+      children.forEach(function(child) {
+        if (child !== this) {
+          var renderList = child._getRenderList();
+          finalList.push.apply(finalList, renderList);
+        }
+        else {
+          finalList.push(this);
+        }
+      }.bind(this));
+      
+//      this._renderList = finalList;
+//    }
+    
+    return finalList;
+    //this._renderList;
   },
   
   /**
@@ -213,6 +292,10 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @example node.setPosition({x: 0.0, y: 0.0})
    */
   setPosition: function(position) {
+    if (this.shouldLogPosition) {
+      console.log("SETTING POSITION", position);
+    }
+  
     var currentPosition = this._position;
     if (currentPosition.x === position.x && currentPosition.y === position.y) {
       return;
@@ -381,11 +464,10 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   moveTo: function(duration, newPosition, completion) {
-    newPosition.x = Math.round(newPosition.x);
-    newPosition.y = Math.round(newPosition.y);
+    var moveToPosition = {x: Math.round(newPosition.x), y: Math.round(newPosition.y)};
     
     if (duration < (1.0 / 60.0)) {
-      this.setPosition(newPosition);
+      this.setPosition(moveToPosition);
       setTimeout(completion, duration * 1000.0);
       return;
     }
@@ -402,7 +484,7 @@ GameEngine.Node = GameEngine.Object.extend({
     setTimeout(function() {
       gameEngine.removeScheduledActionWithKey(animationID);
       
-        this.setPosition(newPosition);
+        this.setPosition(moveToPosition);
         
         var animationIndex = animationKeys.indexOf(animationID);
         if (animationIndex !== -1) {
@@ -415,7 +497,7 @@ GameEngine.Node = GameEngine.Object.extend({
     }.bind(this), duration * 1000.0);
     
     gameEngine.addScheduledActionWithKey(function() {
-      this._moveTo(position, newPosition, now, duration);
+      this._moveTo(position, moveToPosition, now, duration);
     }.bind(this), animationID);
   },
   
@@ -588,23 +670,35 @@ GameEngine.Node = GameEngine.Object.extend({
   buffer: null,
   resolutionLocation: null,
   
-  createProgram: function() {
-    return null;
+  createProgram: function(completion) {
+    var script1 = document.getElementById("sprite.fsh");
+    var script2 = document.getElementById("sprite.vsh");
+    var scripts = [script1, script2];
+  
+    // First load the shader scripts
+    loadScripts(scripts, 0, function() {
+      var gl = getGL();
+      var program = createProgramFromScripts(gl, "sprite.fsh", "sprite.vsh");
+      completion(program);
+    });
   },
   
   setupGL: function(completion) {
-    if (this.doesDraw) {
+//    if (this.doesDraw) {
       var gl = getGL();
       var program = this.program;
       
       program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
       program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
       program.positionLocation = gl.getAttribLocation(program, "a_position");
-      program.alphaLocation = gl.getUniformLocation(program, "tAlpha");
       
-      // Set the alpha mode and enable blending
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      gl.enable(gl.BLEND);
+      if (this.doesDraw) {
+        program.alphaLocation = gl.getUniformLocation(program, "tAlpha");
+      
+        // Set the alpha mode and enable blending
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      }
       
       gl.useProgram(program);
       
@@ -644,7 +738,8 @@ GameEngine.Node = GameEngine.Object.extend({
     var translationMatrix = makeTranslation(position.x, position.y);
     
     // Multiply them
-    var moveOriginMatrix = makeTranslation(- contentSize.width / 2.0, - contentSize.height / 2.0);
+    var anchorPoint = this.getAnchorPoint();
+    var moveOriginMatrix = makeTranslation(- contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y);
     var matrix = matrixMultiply(moveOriginMatrix, scaleMatrix);
     matrix = matrixMultiply(matrix, rotationMatrix);
     this._matrix = matrixMultiply(matrix, translationMatrix);
@@ -662,9 +757,47 @@ GameEngine.Node = GameEngine.Object.extend({
   
   currentProgram: {currentProgram: null},
   
+  _backgroundColor: null,
   render: function() {
+    var gl = getGL();
+//    var parent = this.parent;
+//    if (parent) {
+//      if (parent._clipsToBounds) {
+//        var position = parent.positionInScene();
+//        var anchorPoint = parent.getAnchorPoint();
+//        var contentSize = parent.getContentSize();
+//        position.x -= contentSize.width * anchorPoint.x;
+//        position.y -= contentSize.height * anchorPoint.y;
+//      
+//        gl.scissor(position.x, position.y, contentSize.width, contentSize.height);
+//        
+//        
+//        
+////        var backgroundColour = this._backgroundColor;
+////         gl.clearColor(backgroundColour.r, backgroundColour.g, backgroundColour.b, 1.0);
+////        console.log("SCISOR", position.x, position.y, contentSize.width, contentSize.height, parent);
+//      }
+//      else if (this._backgroundColor){
+//        var position = this.positionInScene();
+//        
+//        var anchorPoint = this.getAnchorPoint();
+//        var _contentSize = this.getContentSize();
+////        console.log("position", position, _contentSize);
+//        position.x -= _contentSize.width * anchorPoint.x;
+//        position.y -= _contentSize.height * anchorPoint.y;
+////        console.log("position€", position, _contentSize);
+//        if (!this._backgroundColor) {
+//          this._backgroundColor = {r: Math.random(), g: Math.random(), b: Math.random};
+//        }
+//        
+//        gl.scissor(position.x, position.y, _contentSize.width, _contentSize.height);
+//        console.log("POS", this.getPosition(), position.x, position.y, _contentSize.width, _contentSize.height);
+//        gl.clearColor(this._backgroundColor.r, this._backgroundColor.g, this._backgroundColor.b, 1.0);
+//      }
+//    }
+  
     if (this.doesDraw) {
-      var gl = getGL();
+      
       var program = this.program;
       gl.useProgram(program);
       

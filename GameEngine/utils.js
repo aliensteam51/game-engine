@@ -56,7 +56,7 @@ function preloadFiles(urls, completion) {
   }
   
   urls.forEach(function(url) {
-    loadImage(url, function() {
+    loadImage(url, function(image) {
       preloadCount--;
       if (preloadCount === 0) {
         if (completion) {
@@ -90,7 +90,7 @@ function loadImage(url, completion) {
 var gl;
 function getGL() {
   if (!gl) {
-    gl = getCanvas().getContext('webgl', {premultipliedAlpha: false, antialias : true});
+    gl = getCanvas().getContext('webgl', {premultipliedAlpha: false, antialias : true, alpha: false});
   }
   return gl;
 }

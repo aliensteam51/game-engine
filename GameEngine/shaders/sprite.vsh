@@ -1,9 +1,15 @@
 attribute vec2 a_position;
 uniform vec2 u_resolution;
 
+attribute vec2 a_texCoord;
+varying vec2 v_texCoord;
 uniform mat3 u_matrix;
 
 void main() {
+  // Pass the texCoord to the fragment shader
+  // The GPU will interpolate this value between points
+  v_texCoord = a_texCoord;
+
   // Multiply the position by the matrix.
   vec2 position = (u_matrix * vec3(a_position, 1)).xy;
 
