@@ -14,7 +14,7 @@ GameEngine.ColorNode = GameEngine.Node.extend({
   loaded: false,
   
   init: function(contentSize, color, loadCallback) {
-    this.doesDraw = true;
+    this._doesDraw = true;
   
     this._super(contentSize, loadCallback);
     
@@ -25,16 +25,12 @@ GameEngine.ColorNode = GameEngine.Node.extend({
   
   setup: function(contentSize, loadCallback) {
     this._super(contentSize, function() {
-      this.loaded = true;
+      this._loaded = true;
       
       if (loadCallback) {
         loadCallback();
       }
     }.bind(this));
-  },
-  
-  setShadowEnabled: function(enabled) {
-    //this._super(enabled);
   },
   
   /* CANVAS METHODS */
@@ -64,13 +60,6 @@ GameEngine.ColorNode = GameEngine.Node.extend({
     // Store the current transformation matrix
     context.save();
     
-    if (this.isShadowEnabled) {
-      context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
-      context.shadowOffsetX = 2.0;
-      context.shadowOffsetY = 2.0;
-      context.shadowBlur = 10.0;
-    }
-    
     context.translate(position.x, position.y);
     context.rotate(angleInRadians);
     context.globalAlpha = this._alpha;
@@ -94,7 +83,7 @@ GameEngine.ColorNode = GameEngine.Node.extend({
     // First load the shader scripts
     loadScripts(scripts, 0, function() {
       var gl = getGL();
-      var program = createProgramFromScripts(gl, "node.fsh", "node.vsh");
+      var program = createProgramFromScripts(gl, "color-node.fsh", "node.vsh");
       completion(program);
     });
   },
@@ -117,7 +106,7 @@ GameEngine.ColorNode = GameEngine.Node.extend({
   colorLocation: null,
 
   render: function() {
-    if (!this.loaded) {
+    if (!this._loaded) {
       return;
     }
     

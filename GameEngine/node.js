@@ -1,11 +1,23 @@
 GameEngine.Node = GameEngine.Object.extend({
   _className: "GameEngine.Node",
+  
+  /**
+   *  @property {Bool} _loaded
+   *  @description If the node is loaded or not
+   */
+  _loaded: true,
 
   /**
    *  @property {Array} _children
    *  @description The children of the node
    */
   _children: null,
+  
+  /**
+   *  @property {Object} _parent
+   *  @description The parent of the node
+   */
+  _parent: null,
 
   /** 
    *  @property {Dictionary} _contentSize 
@@ -33,45 +45,57 @@ GameEngine.Node = GameEngine.Object.extend({
   _rotation: 0.0,
   
   /**
-   *  @property {Dictionary} anchorPoint
+   *  @property {Dictionary} _anchorPoint
    *  @description The nodes anchorpoint, all animations use this point, use getAnchorPoint() or setAnchorPoint({x: 0.0, y: 0.0})
    */
   _anchorPoint: {x: 0.5, y: 0.5},
   
   /**
-   *  @property {Number} scale
+   *  @property {Number} _scale
    *  @description The scale of the node
    */
   _scale: 1.0,
   
   /**
-   *  @property {GameEngine.Scene} scene
+   *  @property {GameEngine.Scene} _scene
    *  @description The scene the node belongs to
    */
-  scene: null,
+  _scene: null,
   
   /**
-   *  @property {Number} zIndex
+   *  @property {Number} _zIndex
    *  @description The z-index of the node
    */
-  zIndex: 0,
+  _zIndex: 0,
   
   /**
-   * @property {Boolean} isShadowEnabled
-   * @property If shadow should be drawn or not
+   *  @property {Array} _animationKeys
+   *  @description The current animation keys of the current running animations
    */
-  isShadowEnabled: false,
+  _animationKeys: null,
   
-  //TODO: sort this out
-  // Snap back test
-  xDiff: 0.0,
-  yDiff: 0.0,
-  origPostion: 0.0,
-  animationKeys: null,
-  doesDraw: false,
+  /**
+   *  @property {Array} _animationTimers
+   *  @description The current animation timers
+   */
   _animationTimers: null,
+  
+  /**
+   *  @property {Bool} _doesDraw
+   *  @description If the node draws itself or not
+   */
+  _doesDraw: false,
+  
+  /**
+   *  @property {Bool} _touchEnabled
+   *  @description If touch is enabled on the node it will receive input events
+   */
   _touchEnabled: false,
-  loaded: true,
+  
+  /**
+   *  @property {Bool} _clipsToBounds
+   *  @description If the node clips its children to its bounds
+   */
   _clipsToBounds: false,
   
   
@@ -84,22 +108,22 @@ GameEngine.Node = GameEngine.Object.extend({
   init: function(contentSize, loadCallback) {
     this._super();
     
-    this.animationKeys = [];
+    // Create basic information storage objects
+    this._animationKeys = [];
     this._animationTimers = [];
-    
     this._children = [];
     
-    this.updateMatrix();
+    // Set the nodes initial size
+    if (contentSize) {
+      this.setContentSize(contentSize);
+    }
     
+    // Setup the node
     this.setup(contentSize, loadCallback);
   },
   
   setup: function(contentSize, loadCallback) {
     this.load(function() {
-      if (contentSize) {
-        this.setContentSize(contentSize);
-      }
-      
       this._update();
       
       if (loadCallback) {
@@ -114,11 +138,12 @@ GameEngine.Node = GameEngine.Object.extend({
   
   addChild: function(child) {
     if (child instanceof GameEngine.Node) {
-      child.parent = this;
-      child._setScene(this.scene);
+      child._parent = this;
+      child._setScene(this._scene);
       this._children.push(child);
       
-      var scene = this.scene;
+      this._renderList = null;
+      var scene = this._scene;
       if (scene) {
         scene.dirty = true;
       }
@@ -128,11 +153,21 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
+  getParent: function() {
+    return this._parent;
+  },
+  
   _setScene: function(scene) {
-    this.scene = scene;
+    this._scene = scene;
+    this.updateMatrix();
+    this._update();
     this._children.forEach(function(child) {
       child._setScene(scene);
     });
+  },
+  
+  getScene: function() {
+    return this._scene;
   },
   
   convertScenePosition: function(scenePosition) {
@@ -148,7 +183,7 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   positionInScene: function() {
-    var parent = this.parent;
+    var parent = this._parent;
     if (parent) {
       return parent.convertToScene(this.getPosition());
     }
@@ -158,33 +193,33 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   convertToScene: function(position) {
-//    console.log("CONVERT TO SCENE", position);
-    var parent = this.parent;
+    var parent = this._parent;
     if (parent) {
       var myPosition = this.getPosition();
       var contentSize = this.getContentSize();
       var anchorPoint = this.getAnchorPoint();
       myPosition.x -= contentSize.width * anchorPoint.x;
       myPosition.y -= contentSize.height * anchorPoint.y;
-//      console.log("RETURNING", parent.convertToScene({x: myPosition.x + position.x, y: myPosition.y + position.y}));
       return parent.convertToScene({x: myPosition.x + position.x, y: myPosition.y + position.y});
     }
     else {
-//      console.log("RETURNING [0]", {x: position.x, y: position.y});
       return {x: position.x, y: position.y};
     }
   },
   
   removeFromParent: function() {
-    var parent = this.parent;
-    if (parent) {
+    var parent = this._parent;
+    if (parent) { 
+      this._setScene(null);
+      
       var children = parent._children;
       var index = children.indexOf(this);
       if (index !== -1) {
         children.splice(index, 1);
         
-        var parentScene = parent.scene;
+        var parentScene = parent._scene;
         if (parentScene) {
+          parentScene._renderList = null;
           parentScene.dirty = true;
         }
       }
@@ -192,12 +227,15 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   removeChild: function(child) {
+    child._setScene(null);
+  
     var children = this._children;
     var index = children.indexOf(child);
     if (index !== -1) {
       this._children.splice(index, 1);
       
-      var scene = this.scene;
+      scene._renderList = null;
+      var scene = this._scene;
       if (scene) {
         scene.dirty = true;
       }
@@ -252,23 +290,20 @@ GameEngine.Node = GameEngine.Object.extend({
   _renderList: null,
   
   _getRenderList: function() {
-//    if (!this._renderList) {
+    if (!this._renderList) {
       var children = this._children.slice();
       children.push(this);
       children = children.sort(function(node1, node2) {
         if (node1 === this) {
-          return node2.zIndex > -1 ? -1 : 1;
+          return node2._zIndex > -1 ? -1 : 1;
         }
         else if (node2 === this) {
-          return node1.zIndex > -1 ? 1 : -1;
+          return node1._zIndex > -1 ? 1 : -1;
         }
         
-//        if (node1.zIndex === node2.zIndex) {
-//          return children.indexOf(node1) - children.indexOf(node2);
-//        }
-        
-        return node1.zIndex - node2.zIndex;
+        return node1._zIndex - node2._zIndex;
       }.bind(this));
+      
       var finalList = [];
       children.forEach(function(child) {
         if (child !== this) {
@@ -280,11 +315,10 @@ GameEngine.Node = GameEngine.Object.extend({
         }
       }.bind(this));
       
-//      this._renderList = finalList;
-//    }
+      this._renderList = finalList;
+    }
     
-    return finalList;
-    //this._renderList;
+    return this._renderList;
   },
   
   /**
@@ -307,10 +341,6 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @example node.setPosition({x: 0.0, y: 0.0})
    */
   setPosition: function(position) {
-    if (this.shouldLogPosition) {
-      console.log("SETTING POSITION", position);
-    }
-  
     var currentPosition = this._position;
     if (currentPosition.x === position.x && currentPosition.y === position.y) {
       return;
@@ -439,14 +469,31 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   /**
-   *  @method setShadowEnabled
-   *  @description Enable shadow on the node
-   *  @param {Boolean} shadowEnabled If the shadow should be enabled
+   *  @method setZIndex
+   *  @description Sets the nodes z index
+   *  @param {Number} zIndex The new z index to set
    *
-   *  @example node.setShadowEnabled(true)
+   *  @example node.setZIndex(100)
    */
-  setShadowEnabled: function(shadowEnabled) {
-    this.isShadowEnabled = shadowEnabled;
+  setZIndex: function(zIndex) {
+    this._zIndex = zIndex;
+    
+    var scene = this._scene;
+    if (scene) {
+      scene._renderList = null;
+    }
+    this._update();
+  },
+  
+  /**
+   *  @method getZIndex
+   *  @description Get the nodes z index
+   *  @return {Number} Returns a zIndex number
+   *
+   *  @example var zIndex = node.getZIndex()
+   */
+  getZIndex: function() {
+    return this._zIndex;
   },
   
   onTouchBegan: function(event) {
@@ -473,7 +520,7 @@ GameEngine.Node = GameEngine.Object.extend({
       clearTimeout(timeout);
     });
   
-    this.animationKeys.forEach(function(animationKey) {
+    this._animationKeys.forEach(function(animationKey) {
       GameEngine.sharedEngine.removeScheduledActionWithKey(animationKey);
     });
   },
@@ -489,7 +536,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     var position = this._position;
     
-    var animationKeys = this.animationKeys;
+    var animationKeys = this._animationKeys;
     var animationID = "_moveBy_" + this._id;
     animationKeys.push(animationID);
     
@@ -536,7 +583,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     var alpha = this._alpha;
     
-    var animationKeys = this.animationKeys;
+    var animationKeys = this._animationKeys;
     var animationID = "_fadeTo_" + this._id;
     animationKeys.push(animationID);
     
@@ -578,7 +625,7 @@ GameEngine.Node = GameEngine.Object.extend({
     var frames = (duration / (1.0 / 60.0));
     var step = (newScale - scale) / frames;
     
-    var animationKeys = this.animationKeys;
+    var animationKeys = this._animationKeys;
     var animationID = "_scaleBy_" + this._id;
     animationKeys.push(animationID);
     
@@ -628,7 +675,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     var rotation = this._rotation;
     
-    var animationKeys = this.animationKeys;
+    var animationKeys = this._animationKeys;
     var animationID = "_rotateBy_" + this._id;
     animationKeys.push(animationID);
     
@@ -671,10 +718,10 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
+  _needsInitialUpdate: false,
   _update: function() {
-    if (needsUpdate(this)) {
-      var scene = this.scene;
-      console.log("UPDATE", scene);
+    if (this._doesDraw || needsUpdate(this)) {
+      var scene = this._scene;
       if (scene) {
         scene.dirty = true;
       }
@@ -706,7 +753,7 @@ GameEngine.Node = GameEngine.Object.extend({
       program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
       program.positionLocation = gl.getAttribLocation(program, "a_position");
       
-      if (this.doesDraw) {
+      if (this._doesDraw) {
         program.alphaLocation = gl.getUniformLocation(program, "tAlpha");
       
         // Set the alpha mode and enable blending
@@ -731,8 +778,16 @@ GameEngine.Node = GameEngine.Object.extend({
     }.bind(this));
   },
   
+  needsScene: function() {
+    return true;
+  },
+  
   _matrix: null,
   updateMatrix: function() {
+    if (this.needsScene() && !this._scene) {
+      return;
+    }
+  
     var contentSize = this._contentSize;
     
     // Scale
@@ -755,8 +810,8 @@ GameEngine.Node = GameEngine.Object.extend({
     matrix = matrixMultiply(matrix, rotationMatrix);
     this._matrix = matrixMultiply(matrix, translationMatrix);
     
-    if (this.parent) {
-      this._matrix = matrixMultiply(this._matrix, this.parent._matrix);
+    if (this._parent) {
+      this._matrix = matrixMultiply(this._matrix, this._parent._matrix);
     }
     
     this._children.forEach(function(child) {
@@ -770,9 +825,17 @@ GameEngine.Node = GameEngine.Object.extend({
   
   _backgroundColor: null,
   render: function() {
-    var gl = getGL();
-    
-    if (this.doesDraw) {
+    if (this._doesDraw) {
+      var gl = getGL();
+      
+      var parent = this._parent;
+      if (parent && parent._clipsToBounds) {
+        gl.enable( gl.DEPTH_TEST );
+        gl.enable(gl.STENCIL_TEST);
+        
+        parent.stencil();
+      }
+      
       var program = this.program;
       gl.useProgram(program);
       
@@ -787,10 +850,45 @@ GameEngine.Node = GameEngine.Object.extend({
       gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
       
       gl.drawArrays(gl.TRIANGLES, 0, 6);
+      
+      
+      if (parent && parent._clipsToBounds) {
+        gl.disable( gl.DEPTH_TEST );
+        gl.disable(gl.STENCIL_TEST);
+      }
     }
   },
   
   renderForCanvas: function() {
+  },
+  
+  stencil: function() {
+    var gl = getGL();
+    var program = this.program;
+    gl.useProgram(program);
+    
+    gl.clearStencil(0);
+    gl.clear(gl.STENCIL_BUFFER_BIT);
+    gl.colorMask(false, false, false, false);
+    gl.stencilFunc(gl.ALWAYS, 1, ~0);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+    
+    // look up where the vertex data needs to go.
+    var positionLocation = program.positionLocation;
+    gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.rectangleArray, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    
+    gl.uniform1f(program.alphaLocation, this._alpha);
+    gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
+    
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.colorMask(true, true, true, true);
+    gl.depthMask(gl.TRUE);
+    gl.stencilFunc(gl.EQUAL, 1, ~0);
+    gl.stencilOp(gl.REPLACE, gl.REPLACE, gl.REPLACE);
   },
   
   indexBuffer: null,
@@ -800,7 +898,7 @@ GameEngine.Node = GameEngine.Object.extend({
       return;
     }
     
-    if (!this.doesDraw) {
+    if (!this._doesDraw) {
       return;
     }
   
@@ -811,13 +909,13 @@ GameEngine.Node = GameEngine.Object.extend({
 });
 
 function needsUpdate(node) {
-  if (node.doesDraw === true) {
+  if (node._doesDraw === true) {
     return true;
   }
   
   var doesDraw = false;
   node._children.forEach(function(child) {
-    if (child.doesDraw) {
+    if (child._doesDraw) {
       doesDraw = true;
     }
   });

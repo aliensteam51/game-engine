@@ -195,8 +195,8 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
   setupGL: function() {
     var gl = getGL();
 //    gl.enable(gl.DEPTH_TEST);                               // Enable depth testing
-//    gl.depthFunc(gl.LEQUAL);                                // Near things obscure far things
-      gl.depthFunc(gl.NEVER);
+//    gl.depthFunc(gl.ALWAYS);                                // Near things obscure far things
+//      gl.depthFunc(gl.NEVER);
       
       //TMP
       this.indexBuffer = gl.createBuffer();
@@ -232,7 +232,6 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     }
     
     this.otherScenes.forEach(function(scene) {
-      console.log("RENDERING OTHER SCENES");
       var children = scene._getRenderList();
       children.forEach(function(node) {
         node.render();

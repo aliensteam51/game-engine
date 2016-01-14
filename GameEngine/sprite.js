@@ -10,7 +10,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
   _testLoadCallback: null,
 
   init: function(url, loadCallback) {
-    this.doesDraw = true;
+    this._doesDraw = true;
     
     this.url = url;
     this.textures = {};
@@ -40,14 +40,16 @@ GameEngine.Sprite = GameEngine.Node.extend({
     this._super(function() {
       var completionFunction = function(image) {
         this.setImage(image);
-          this.loaded = true;
+          this._loaded = true;
+          
+          this._update();
           
           if (completion) {
             completion();
           }
           
           if (this._testLoadCallback) {
-          this._testLoadCallback();
+            this._testLoadCallback();
           } 
       }.bind(this);
       
@@ -77,14 +79,6 @@ GameEngine.Sprite = GameEngine.Node.extend({
 	
     this.image = image;
     
-    var renderImage;
-    if (this.isShadowEnabled) {
-      renderImage = GameEngine.effectHelper.getShadowImage([image], {x: 2.0, y: 2.0}, 10.0);
-    }
-    else {
-      renderImage = image;
-    }
-    
     var gl = getGL();
     
     var texture = image.texture;
@@ -101,7 +95,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
       // Upload the image into the texture.
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, renderImage);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     
       image.texture = texture;
     }
@@ -112,17 +106,20 @@ GameEngine.Sprite = GameEngine.Node.extend({
     this.texture = texture;
   },
   
+  _shouldUpdateOverlayColour: false,
   setOverlayColour: function(overlayColour) {
-    return;
     this._overlayColour = overlayColour;
   
     var program = this.program;
-    
-    var gl = getGL();
-    gl.useProgram(program);
-    gl.uniform4f(program.overlayColourLocation, overlayColour.r, overlayColour.g, overlayColour.b, overlayColour.a);
-  
-    this._update();
+    if (program) {
+      var gl = getGL();
+      gl.useProgram(program);
+      gl.uniform4f(program.overlayColourLocation, overlayColour.r, overlayColour.g, overlayColour.b, overlayColour.a);
+      this._update();
+    }
+    else {
+      this._shouldUpdateOverlayColour = true;
+    }
   },
   
   _updateContent: function(clipRect) {
@@ -192,12 +189,16 @@ GameEngine.Sprite = GameEngine.Node.extend({
     }
     
     this._renderImage = this.frameDictionary[imagePaths[index]];
-    this.scene.dirty = true;
+    this._scene.dirty = true;
     this.texture = null;
     
     setTimeout(function() {
       this._startFrameAnimation(index + 1, imagePaths, frameDuration, completion);
     }.bind(this), frameDuration * 1000.0);
+  },
+  
+  _doesDraw: function() {
+    return true;
   },
   
   /* CANVAS METHODS */
@@ -207,7 +208,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
     console.log("RENDER FOR CANVAS");
   
     var image = this._renderImage;
-    if (!image || !this.loaded)		{
+    if (!image || !this._loaded)		{
       return;
     }
 	
@@ -229,13 +230,6 @@ GameEngine.Sprite = GameEngine.Node.extend({
     
     // Store the current transformation matrix
     context.save();
-    
-    if (this.isShadowEnabled) {
-      context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
-      context.shadowOffsetX = 2.0;
-      context.shadowOffsetY = 2.0;
-      context.shadowBlur = 10.0;
-    }
     
     context.translate(position.x, position.y);
     context.rotate(angleInRadians);
@@ -297,7 +291,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
   
   render: function() {
     var texture = this.texture;
-    if (!texture || !this.loaded) {
+    if (!texture || !this._loaded) {
       return;
     }
     

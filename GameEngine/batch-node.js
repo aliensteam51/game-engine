@@ -473,8 +473,8 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   _update: function() {
-    if (this.doesDraw) {
-      var scene = this.scene;
+    if (this._doesDraw) {
+      var scene = this._scene;
       if (scene) {
         scene.dirty = true;
       }
@@ -578,7 +578,7 @@ GameEngine.Node = GameEngine.Object.extend({
   currentProgram: {currentProgram: null},
   
   render: function() {
-    if (!this.doesDraw) {
+    if (!this._doesDraw) {
       return;
     }
 	
@@ -624,13 +624,19 @@ GameEngine.Node = GameEngine.Object.extend({
   
   indexBuffer: null,
   indices: null,
-  doesDraw: true,
+  
+  init: function() {
+    this._super();
+    
+    this._doesDraw = false;
+  },
+  
   draw: function() {
     if (!this.program) {
       return;
     }
     
-    if (!this.doesDraw) {
+    if (!this._doesDraw) {
       return;
     }
   

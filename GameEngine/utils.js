@@ -90,7 +90,7 @@ function loadImage(url, completion) {
 var gl;
 function getGL() {
   if (!gl) {
-    gl = getCanvas().getContext('webgl', {premultipliedAlpha: false, antialias : true, alpha: false});
+    gl = getCanvas().getContext('webgl', {premultipliedAlpha: false, antialias : true, alpha: false, stencil: true});
   }
   return gl;
 }

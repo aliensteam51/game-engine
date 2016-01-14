@@ -1,5 +1,5 @@
 GameEngine.Scene = GameEngine.Node.extend({
-  className: "GameEngine.Scene",
+  _className: "GameEngine.Scene",
   backgroundColor: {r: 0.0, g: 0.0, b: 0.0, a: 1.0},
   //{r: 126.0 / 255.0, g: 211.0 / 255.0, b: 33.0 / 255.0, a: 1.0},
   
@@ -32,9 +32,15 @@ GameEngine.Scene = GameEngine.Node.extend({
   
   },
   
+  needsScene: function() {
+    return false;
+  },
+  
   addChild: function(child) {
     this._super(child);
     child._setScene(this);
+    this._renderList = null;
+    this._update();
   },
   
   allChildren: function() {

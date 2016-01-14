@@ -3,14 +3,14 @@ GameEngine.Sprite = GameEngine.Node.extend({
   image: null,
   _renderImage: null,
   textures: null,
-  loaded: false,
+  _loaded: false,
 
   init: function(url) {
     this._super();
   
     this.url = url;
     this.textures = {};
-    this.doesDraw = true;
+    this._doesDraw = true;
   },
   
   load: function(completion) {
@@ -18,7 +18,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
       loadImage(this.url, function(image) {
         this.setImage(image);
         this.setContentSize({width: image.width, height: image.height});
-        this.loaded = true;
+        this._loaded = true;
         
         if (completion) {
           completion();
@@ -38,21 +38,10 @@ GameEngine.Sprite = GameEngine.Node.extend({
 	
     this.image = image;
     
-    var renderImage;
-    if (this.isShadowEnabled) {
-      renderImage = GameEngine.effectHelper.getShadowImage([image], {x: 2.0, y: 2.0}, 10.0);
-    }
-    else {
-      renderImage = image;
-    }
-    
-     
-    
     var gl = getGL();
     
     var texture = image.texture;
     if (!texture) {
-      console.log("CREATING TEXTURE");
       texture = gl.createTexture();
       
       gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -65,7 +54,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
       // Upload the image into the texture.
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, renderImage);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
     
       image.texture = texture;
     }
@@ -102,8 +91,8 @@ GameEngine.Sprite = GameEngine.Node.extend({
       return;
     }
     
-    this._renderImage = this.frameDictionary[imagePaths[index]];
-    this.scene.dirty = true;
+//    this._renderImage = this.frameDictionary[imagePaths[index]];
+    this._scene.dirty = true;
     this.texture = null;
     
     setTimeout(function() {
@@ -117,8 +106,8 @@ GameEngine.Sprite = GameEngine.Node.extend({
   renderForCanvas: function() {
     console.log("RENDER FOR CANVAS");
   
-    var image = this._renderImage;
-    if (!image || !this.loaded)		{
+    var image = this.image;
+    if (!image || !this._loaded)		{
       return;
     }
 	
@@ -140,13 +129,6 @@ GameEngine.Sprite = GameEngine.Node.extend({
     
     // Store the current transformation matrix
     context.save();
-    
-    if (this.isShadowEnabled) {
-      context.shadowColor = "rgba( 0, 0, 0, 0.3 )";
-      context.shadowOffsetX = 2.0;
-      context.shadowOffsetY = 2.0;
-      context.shadowBlur = 10.0;
-    }
     
     context.translate(position.x, position.y);
     context.rotate(angleInRadians);
@@ -284,7 +266,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
   
   render: function() {
     var texture = this.texture;
-    if (!texture || !this.loaded) {
+    if (!texture || !this._loaded) {
       return;
     }
     this._super();
