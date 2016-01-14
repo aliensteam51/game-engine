@@ -248,18 +248,23 @@ GameEngine.Sprite = GameEngine.Node.extend({
     context.restore();
   },
   
-  /* WEBGL METHODS */
-  setupGL: function(completion) {
+  createProgram: function(completion) {
     var script1 = document.getElementById("sprite.fsh");
     var script2 = document.getElementById("sprite.vsh");
     var scripts = [script1, script2];
-    
-    var superMethod = this._super;
   
     // First load the shader scripts
     loadScripts(scripts, 0, function() {
       var gl = getGL();
       var program = createProgramFromScripts(gl, "sprite.fsh", "sprite.vsh");
+      completion(program);
+    });
+  },
+  
+  /* WEBGL METHODS */
+  setupGL: function(completion) {
+    this._super(function(program) {
+      var gl = getGL();
       gl.useProgram(program);
       
       var texCoordBuffer = gl.createBuffer();
@@ -282,10 +287,10 @@ GameEngine.Sprite = GameEngine.Node.extend({
       program.overlayColourLocation = gl.getUniformLocation(program, "overlayColour");
       gl.uniform4f(program.overlayColourLocation, 0.0, 0.0, 0.0, 0.0);
       
-      this.program = program;
-      
-      superMethod.call(this, completion);
-    }.bind(this));
+      if (completion) {
+        completion();
+      }
+    });
   },
   
   test: {currentTexture: null, currentRectangleArray: null, currentAlpha: -1.0},

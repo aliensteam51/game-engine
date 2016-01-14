@@ -117,6 +117,11 @@ GameEngine.Node = GameEngine.Object.extend({
       child.parent = this;
       child._setScene(this.scene);
       this._children.push(child);
+      
+      var scene = this.scene;
+      if (scene) {
+        scene.dirty = true;
+      }
     }
     else {
       console.log("WARNING - GameEngine.Node - Not a instance of GameEngine.Node", child);
@@ -177,6 +182,11 @@ GameEngine.Node = GameEngine.Object.extend({
       var index = children.indexOf(this);
       if (index !== -1) {
         children.splice(index, 1);
+        
+        var parentScene = parent.scene;
+        if (parentScene) {
+          parentScene.dirty = true;
+        }
       }
     }
   },
@@ -186,6 +196,11 @@ GameEngine.Node = GameEngine.Object.extend({
     var index = children.indexOf(child);
     if (index !== -1) {
       this._children.splice(index, 1);
+      
+      var scene = this.scene;
+      if (scene) {
+        scene.dirty = true;
+      }
     }
   },
   
@@ -659,6 +674,7 @@ GameEngine.Node = GameEngine.Object.extend({
   _update: function() {
     if (needsUpdate(this)) {
       var scene = this.scene;
+      console.log("UPDATE", scene);
       if (scene) {
         scene.dirty = true;
       }
@@ -671,23 +687,21 @@ GameEngine.Node = GameEngine.Object.extend({
   resolutionLocation: null,
   
   createProgram: function(completion) {
-    var script1 = document.getElementById("sprite.fsh");
-    var script2 = document.getElementById("sprite.vsh");
+    var script1 = document.getElementById("node.fsh");
+    var script2 = document.getElementById("node.vsh");
     var scripts = [script1, script2];
   
     // First load the shader scripts
     loadScripts(scripts, 0, function() {
       var gl = getGL();
-      var program = createProgramFromScripts(gl, "sprite.fsh", "sprite.vsh");
+      var program = createProgramFromScripts(gl, "node.fsh", "node.vsh");
       completion(program);
     });
   },
   
   setupGL: function(completion) {
-//    if (this.doesDraw) {
-      var gl = getGL();
-      var program = this.program;
-      
+    var gl = getGL();
+    this.createProgram(function(program) {
       program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
       program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
       program.positionLocation = gl.getAttribLocation(program, "a_position");
@@ -709,15 +723,12 @@ GameEngine.Node = GameEngine.Object.extend({
       gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(12), gl.DYNAMIC_DRAW);
       
+      this.program = program;
+      
       if (completion) {
-        completion();
+        completion(program);
       }
-    }
-    else {
-      if (completion) {
-        completion();
-      }
-    }
+    }.bind(this));
   },
   
   _matrix: null,
@@ -760,44 +771,8 @@ GameEngine.Node = GameEngine.Object.extend({
   _backgroundColor: null,
   render: function() {
     var gl = getGL();
-//    var parent = this.parent;
-//    if (parent) {
-//      if (parent._clipsToBounds) {
-//        var position = parent.positionInScene();
-//        var anchorPoint = parent.getAnchorPoint();
-//        var contentSize = parent.getContentSize();
-//        position.x -= contentSize.width * anchorPoint.x;
-//        position.y -= contentSize.height * anchorPoint.y;
-//      
-//        gl.scissor(position.x, position.y, contentSize.width, contentSize.height);
-//        
-//        
-//        
-////        var backgroundColour = this._backgroundColor;
-////         gl.clearColor(backgroundColour.r, backgroundColour.g, backgroundColour.b, 1.0);
-////        console.log("SCISOR", position.x, position.y, contentSize.width, contentSize.height, parent);
-//      }
-//      else if (this._backgroundColor){
-//        var position = this.positionInScene();
-//        
-//        var anchorPoint = this.getAnchorPoint();
-//        var _contentSize = this.getContentSize();
-////        console.log("position", position, _contentSize);
-//        position.x -= _contentSize.width * anchorPoint.x;
-//        position.y -= _contentSize.height * anchorPoint.y;
-////        console.log("position€", position, _contentSize);
-//        if (!this._backgroundColor) {
-//          this._backgroundColor = {r: Math.random(), g: Math.random(), b: Math.random};
-//        }
-//        
-//        gl.scissor(position.x, position.y, _contentSize.width, _contentSize.height);
-//        console.log("POS", this.getPosition(), position.x, position.y, _contentSize.width, _contentSize.height);
-//        gl.clearColor(this._backgroundColor.r, this._backgroundColor.g, this._backgroundColor.b, 1.0);
-//      }
-//    }
-  
+    
     if (this.doesDraw) {
-      
       var program = this.program;
       gl.useProgram(program);
       
@@ -813,10 +788,6 @@ GameEngine.Node = GameEngine.Object.extend({
       
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
-    
-//    this._children.forEach(function(child) {
-//      child.render();
-//    });
   },
   
   renderForCanvas: function() {

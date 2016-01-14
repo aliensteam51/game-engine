@@ -1,13 +1,13 @@
 GameEngine.SharedEngine = GameEngine.Object.extend({
   currentScene: null,
-  renderScenes: null,
+  otherScenes: null,
   legacyCanvasMode: false,
   scheduledActions: null,
   
   init: function() {
     this._super();
     this.scheduledActions = {};
-    this.renderScenes = [];
+    this.otherScenes = [];
   },
   
   start: function() {
@@ -22,11 +22,11 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       return;
     }
     
+    var otherScenes = this.otherScenes;
     var previousScene = this.currentScene;
-    
-//    if (this.currentScene) {
-//      this.currentScene.onExit();
-//    }
+    if (previousScene) {
+      otherScenes.push(previousScene);
+    }
     
     var loadSprites = [];
     
@@ -48,14 +48,13 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       }
     
       loadCount--;
-      console.log("loadCount", loadCount);
       if (loadCount === 0) {
         if (previousScene) {
           var contentSize = previousScene.getContentSize();
           previousScene.moveTo(0.5, {x: - contentSize.width, y: 0.0}, function() {
             previousScene.onExit();
-            var renderScenes = this.renderScenes;
-            renderScenes.splice(renderScenes.indexOf(previousScene), 1);
+            var otherScenes = this.otherScenes;
+            otherScenes.splice(otherScenes.indexOf(previousScene), 1);
           }.bind(this));
         }
       
@@ -65,7 +64,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
         var contentSize = scene.getContentSize();
         scene.setPosition({x: contentSize.width, y: 0.0});
         scene.moveTo(0.5, {x: 0.0, y: 0.0});
-        this.renderScenes.push(scene);
+//        this.otherScenes.push(scene);
       }
     }.bind(this);
     
@@ -85,9 +84,6 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
         loadFunction(null);
       }
     }.bind(this));
-    
-    
-    
   },
 
   startEvents: function() {
@@ -208,52 +204,41 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
   },
   
   render: function() {
-//    console.log("RENDER SCENES", this.renderScenes);
-//    .forEach(function(scene) {
-//      if (scene /*&& scene.dirty*/) {
-        if (this.legacyCanvasMode) {
-          this.renderCanvas();
-        }
-        else {
-          this.renderGL();
-        }
-//        scene.dirty = false;
-//      }
-//    }.bind(this));
+    var currentScene = this.currentScene;
+    if (currentScene && currentScene.dirty) {
+      currentScene.dirty = false;
+    
+      if (this.legacyCanvasMode) {
+        this.renderCanvas();
+      }
+      else {
+        this.renderGL();
+      }
+    }
   },
 
   renderGL: function() {
     var gl = getGL();
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);      // Clear the color as well as the depth buffer.
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-    
-//    gl.enable(gl.SCISSOR_TEST);
-//    gl.scissor(0.0, 0.0, 1024.0, 768.0);
   
-//    var currentScene = this.currentScene;
-//    if (currentScene) {
-
-      this.renderScenes.forEach(function(scene) {
-        var children = scene._getRenderList();
-        children.forEach(function(node) {
-          node.render();
-          node.draw();
-        });
+    var currentScene = this.currentScene;
+    if (currentScene) {
+      var children = currentScene._getRenderList();
+      children.forEach(function(node) {
+        node.render();
+        node.draw();
       });
-//      var backgroundColor = currentScene.backgroundColor;
-//      gl.clearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
-      
-      // Sort opaque, not opaque
-//      console.log("TEST", );
-
-      
-      
-//      var children = currentScene._getRenderList();
-//      children.forEach(function(node) {
-//        node.render();
-//        node.draw();
-//      });
-//    }
+    }
+    
+    this.otherScenes.forEach(function(scene) {
+      console.log("RENDERING OTHER SCENES");
+      var children = scene._getRenderList();
+      children.forEach(function(node) {
+        node.render();
+        node.draw();
+      });
+    });
   
     gl.flush();
   },

@@ -50,6 +50,10 @@ GameEngine.Scene = GameEngine.Node.extend({
     });
   },
   
+  _update: function() {
+    this.dirty = true;
+  },
+  
   getNodeChildren: function(node, array) {
     node._children.forEach(function(child) {
       array.push(child);
