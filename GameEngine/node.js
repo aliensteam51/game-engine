@@ -29,7 +29,7 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @property {Dictionary} _position
    *  @description The position of the node, use getPosition() or setPosition({x: 0.0, y: 0.0})
    */
-  _position: {x: 0.0, y: 0.0},
+  _position: {x: 0.0, y: 0.0, z: 0.0},
   
   /** 
    *  @property {Number} _alpha 
@@ -42,7 +42,7 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @description The rotation of the node, use getRotation() or setRotation(180.0)
    */
    //TODO: Add more rotation axes
-  _rotation: 0.0,
+  _rotation: {x: 0.0, y: 0.0, z: 0.0},
   
   /**
    *  @property {Dictionary} _anchorPoint
@@ -98,6 +98,8 @@ GameEngine.Node = GameEngine.Object.extend({
    */
   _clipsToBounds: false,
   
+  _shouldRender3D: true,
+  _global: {},
   
   /**
    *  @method init
@@ -125,7 +127,6 @@ GameEngine.Node = GameEngine.Object.extend({
   setup: function(contentSize, loadCallback) {
     this.load(function() {
       this._update();
-      
       if (loadCallback) {
         loadCallback();
       }
@@ -262,15 +263,7 @@ GameEngine.Node = GameEngine.Object.extend({
   
     this._contentSize = {width: contentSize.width, height: contentSize.height};
     
-    this.rectangleArray = new Float32Array([ 
-      0.0, 0.0,
-      0.0 + contentSize.width, 0.0,
-      0.0, 0.0 + contentSize.height,
-      0.0, 0.0 + contentSize.height,
-      0.0 + contentSize.width, 0.0,
-      0.0 + contentSize.width, 0.0 + contentSize.height]
-    );
-    
+    this.updateRectangleArray();
     this.updateMatrix();
     this._update();
   },
@@ -342,11 +335,13 @@ GameEngine.Node = GameEngine.Object.extend({
    */
   setPosition: function(position) {
     var currentPosition = this._position;
-    if (currentPosition.x === position.x && currentPosition.y === position.y) {
+    if (currentPosition.x === position.x && currentPosition.y === position.y && currentPosition.z === position.z) {
       return;
     }
     
-    this._position = {x: position.x, y: position.y};
+    this._position = {  x: position.x !== null && position.x !== undefined ? position.x : 0.0, 
+                        y: position.y !== null && position.y !== undefined ? position.y : 0.0, 
+                        z: position.z !== null && position.z !== undefined ? position.z : 0.0};
     
     this.updateMatrix();
     this._update();
@@ -392,14 +387,19 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @description Set the rotation of the node
    *  @param {Number} rotation thie new rotation in degrees
    *
-   *  @example node.setRotation(180)
+   *  @example node.setRotation(180 or {x: 180.0, y: 0.0, z: 0.0})
    */
   setRotation: function(rotation) {
     if (this._rotation === rotation) {
       return;
     }
-  
-    this._rotation = rotation;
+    
+    if ((!isNaN(parseFloat(rotation)) && isFinite(rotation))) {
+      this._rotation.z = rotation;
+    }
+    else {
+      this._rotation = {x: rotation.x ? rotation.x : 0.0, y: rotation.y ? rotation.y : 0.0, z: rotation.z ? rotation.z : 0.0};
+    }
     
     this.updateMatrix();
     this._update();
@@ -413,7 +413,8 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @example var rotation = node.getRotation()
    */
   getRotation: function() {
-    return this._rotation;
+    var rotation = this._rotation;
+    return {x: rotation.x, y: rotation.y, z: rotation.z};
   },
   
   /**
@@ -528,7 +529,7 @@ GameEngine.Node = GameEngine.Object.extend({
   moveTo: function(duration, newPosition, completion) {
     var moveToPosition = {x: Math.round(newPosition.x), y: Math.round(newPosition.y)};
     
-    if (duration < (1.0 / 60.0)) {
+    if (duration < getInterval() / 1000.0) {
       this.setPosition(moveToPosition);
       setTimeout(completion, duration * 1000.0);
       return;
@@ -575,7 +576,7 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   fadeTo: function(duration, newAlpha, completion) {
-    if (duration < (1.0 / 60.0)) {
+    if (duration < getInterval() / 1000.0) {
       this.setAlpha(newAlpha);
       setTimeout(completion, duration * 1000.0);
       return;
@@ -611,18 +612,18 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   _fadeTo: function(startAlpha, endAlpha, startTime, duration) {
-    var alphaStep = (endAlpha - startAlpha);
+    var alphaStep = endAlpha - startAlpha;
     
     var now = Date.now();
     var percentage = ((now - startTime) / 1000.0) / duration;
     if (percentage <= 1) {
-      this.setAlpha(alphaStep * percentage);
+      this.setAlpha(startAlpha + alphaStep * percentage);
     }
   },
   
   scaleTo: function(duration, newScale, completion) {
     var scale = this._scale;
-    var frames = (duration / (1.0 / 60.0));
+    var frames = (duration / getInterval() / 1000.0);
     var step = (newScale - scale) / frames;
     
     var animationKeys = this._animationKeys;
@@ -631,7 +632,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     var gameEngine = GameEngine.sharedEngine;
     gameEngine.addScheduledActionWithKey(function() {
-      this._scaleBy(1.0 / 60.0, newScale, step, function() {
+      this._scaleBy(getInterval() / 1000.0, newScale, step, function() {
         gameEngine.removeScheduledActionWithKey(animationID);
         
         var animationIndex = animationKeys.indexOf(animationID);
@@ -667,7 +668,7 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   rotateTo: function(duration, newRotation, completion) {
-    if (duration < (1.0 / 60.0)) {
+    if (duration < getInterval() / 1000.0) {
       this.setRotation(newRotation);
       setTimeout(completion, duration * 1000.0);
       return;
@@ -704,17 +705,19 @@ GameEngine.Node = GameEngine.Object.extend({
    this._animationTimers.push(rotateTimer);
     
     gameEngine.addScheduledActionWithKey(function() {
-      this._rotateTo(rotation, newRotation, now, duration);
+      this._rotateTo(rotation, (!isNaN(parseFloat(newRotation)) && isFinite(newRotation)) ? {x: 0.0, y: 0.0, z: newRotation} : newRotation, now, duration);
     }.bind(this), animationID);
   },
   
   _rotateTo: function(startDegrees, endDegrees, startTime, duration) {
-    var rotationStep = endDegrees - startDegrees;
+    var rotationStepX = endDegrees.x - startDegrees.x;
+    var rotationStepY = endDegrees.y - startDegrees.y;
+    var rotationStepZ = endDegrees.z - startDegrees.z;
     
     var now = Date.now();
     var percentage = ((now - startTime) / 1000.0) / duration;
     if (percentage <= 1.0) {
-      this.setRotation(startDegrees + (rotationStep * percentage));
+      this.setRotation({x: startDegrees.x + (rotationStepX * percentage), y: startDegrees.y + (rotationStepY * percentage), z: startDegrees.z + (rotationStepZ * percentage)});
     }
   },
   
@@ -733,7 +736,24 @@ GameEngine.Node = GameEngine.Object.extend({
   buffer: null,
   resolutionLocation: null,
   
+  createPrograms: function(completion) {
+    var programs = [];
+    this.createProgram(function(program1) {
+      programs.push(program1);
+      this.createProgram3D(function(program2) {
+        program2.is3D = true;
+        programs.push(program2);
+        completion(programs);
+      });
+    }.bind(this));
+  },
+  
   createProgram: function(completion) {
+    if (this._global.program) {
+      completion(this._global.program);
+      return;
+    }
+  
     var script1 = document.getElementById("node.fsh");
     var script2 = document.getElementById("node.vsh");
     var scripts = [script1, script2];
@@ -742,38 +762,66 @@ GameEngine.Node = GameEngine.Object.extend({
     loadScripts(scripts, 0, function() {
       var gl = getGL();
       var program = createProgramFromScripts(gl, "node.fsh", "node.vsh");
+      this._global.program = program;
       completion(program);
-    });
+    }.bind(this));
+  },
+  
+  createProgram3D: function(completion) {
+    if (this._global.program3D) {
+      completion(this._global.program3D);
+      return;
+    }
+  
+    var script1 = document.getElementById("node.fsh");
+    var script2 = document.getElementById("node-3d.vsh");
+    var scripts = [script1, script2];
+  
+    // First load the shader scripts
+    loadScripts(scripts, 0, function() {
+      var gl = getGL();
+      var program = createProgramFromScripts(gl, "node.fsh", "node-3d.vsh");
+      this._global.program3D = program;
+      completion(program);
+    }.bind(this));
   },
   
   setupGL: function(completion) {
-    var gl = getGL();
-    this.createProgram(function(program) {
-      program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
-      program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-      program.positionLocation = gl.getAttribLocation(program, "a_position");
+    this.createPrograms(function(programs) {
+      var gl = getGL();
+      programs.forEach(function(program) {
+        program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
+        program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        program.positionLocation = gl.getAttribLocation(program, "a_position");
+        
+        if (this._doesDraw) {
+          program.alphaLocation = gl.getUniformLocation(program, "tAlpha");
+        
+          // Set the alpha mode and enable blending
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        }
+        
+        gl.useProgram(program);
+        
+        var canvas = getCanvas();
+        if (program.is3D) {
+          gl.uniform3f(program.resolutionLocation, canvas.width, canvas.height, canvas.width);
+        }
+        else {
+          gl.uniform2f(program.resolutionLocation, canvas.width, canvas.height);
+        }
+        
+        program.buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(12), gl.DYNAMIC_DRAW);
+      }.bind(this));
       
-      if (this._doesDraw) {
-        program.alphaLocation = gl.getUniformLocation(program, "tAlpha");
-      
-        // Set the alpha mode and enable blending
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-      }
-      
-      gl.useProgram(program);
-      
-      var canvas = getCanvas();
-      gl.uniform2f(program.resolutionLocation, canvas.width, canvas.height);
-      
-      program.buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(12), gl.DYNAMIC_DRAW);
-      
-      this.program = program;
+      this.program = programs[0];
+      this.program3D = programs[1];
       
       if (completion) {
-        completion(program);
+        completion(programs);
       }
     }.bind(this));
   },
@@ -784,6 +832,47 @@ GameEngine.Node = GameEngine.Object.extend({
   
   _matrix: null,
   updateMatrix: function() {
+    if (this._shouldRender3D) {
+      this.update3DMatrix();
+    }
+    else {
+      if (this.needsScene() && !this._scene) {
+        return;
+      }
+    
+      var contentSize = this._contentSize;
+      
+      // Scale
+      var scale = this._scale;
+      var scaleMatrix = makeScale(scale, scale);
+      
+      // Rotation
+      var angleInDegrees = this._rotation.z;
+      var angleInRadians = angleInDegrees * Math.PI / 180;
+      rotationMatrix = makeRotation(angleInRadians);
+      
+      // Translation
+      var position = this._position;
+      var translationMatrix = makeTranslation(position.x, position.y);
+      
+      // Multiply them
+      var anchorPoint = this.getAnchorPoint();
+      var moveOriginMatrix = makeTranslation(- contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y);
+      var matrix = matrixMultiply(moveOriginMatrix, scaleMatrix);
+      matrix = matrixMultiply(matrix, rotationMatrix);
+      this._matrix = matrixMultiply(matrix, translationMatrix);
+      
+      if (this._parent && this._parent._matrix) {
+        this._matrix = matrixMultiply(this._matrix, this._parent._matrix);
+      }
+      
+      this._children.forEach(function(child) {
+        child.updateMatrix();
+      });
+    }
+  },
+  
+  update3DMatrix: function() {
     if (this.needsScene() && !this._scene) {
       return;
     }
@@ -792,38 +881,97 @@ GameEngine.Node = GameEngine.Object.extend({
     
     // Scale
     var scale = this._scale;
-    var scaleMatrix = makeScale(scale, scale);
+    var scaleMatrix = make3DScale(scale, scale, scale);
+    //makeScale(scale, scale);
     
     // Rotation
-    var angleInDegrees = this._rotation;
-    var angleInRadians = angleInDegrees * Math.PI / 180;
-    rotationMatrix = makeRotation(angleInRadians);
+    var rotation = this._rotation;
+    
+    var angleInDegreesX = rotation.x;
+    var angleInRadiansX, rotationMatrixX;
+    if (angleInDegreesX !== 0.0) {
+      angleInRadiansX = angleInDegreesX * Math.PI / 180;
+      rotationMatrixX = make3DRotationX(angleInRadiansX);
+    }
+    
+    var angleInDegreesY = rotation.y;
+    var angleInRadiansY, rotationMatrixY;
+    if (angleInDegreesY !== 0.0) {
+      angleInRadiansY = angleInDegreesY * Math.PI / 180;
+      rotationMatrixY = make3DRotationY(angleInRadiansY);
+    }
+    
+    var angleInDegreesZ = rotation.z;
+    var angleInRadiansZ, rotationMatrixZ;
+    if (angleInDegreesZ !== 0.0) {
+      angleInRadiansZ = angleInDegreesZ * Math.PI / 180;
+      rotationMatrixZ = make3DRotationZ(angleInRadiansZ);
+    }
     
     // Translation
     var position = this._position;
-    var translationMatrix = makeTranslation(position.x, position.y);
+    var translationMatrix = make3DTranslation(position.x, position.y, position.z);
     
     // Multiply them
     var anchorPoint = this.getAnchorPoint();
-    var moveOriginMatrix = makeTranslation(- contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y);
-    var matrix = matrixMultiply(moveOriginMatrix, scaleMatrix);
-    matrix = matrixMultiply(matrix, rotationMatrix);
-    this._matrix = matrixMultiply(matrix, translationMatrix);
+    var moveOriginMatrix = make3DTranslation(- contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y, 0.0);
+    var matrix = matrix3DMultiply(moveOriginMatrix, scaleMatrix);
     
-    if (this._parent) {
-      this._matrix = matrixMultiply(this._matrix, this._parent._matrix);
+    matrix = scaleMatrix;
+    if (this._parent && this._parent._matrix) {
+      matrix = matrix3DMultiply(this._parent._matrix, scaleMatrix);
     }
+    
+    matrix = matrix3DMultiply(matrix, translationMatrix);
+    
+    if (angleInDegreesX !== 0.0) {
+      matrix = matrix3DMultiply(matrix, rotationMatrixX);
+    }
+    
+    if (angleInDegreesY !== 0.0) {
+      matrix = matrix3DMultiply(matrix, rotationMatrixY);
+    }
+    
+    if (angleInDegreesZ !== 0.0) {
+      matrix = matrix3DMultiply(matrix, rotationMatrixZ);
+    }
+    matrix = matrix3DMultiply(matrix, moveOriginMatrix);
+    this._matrix = matrix;
     
     this._children.forEach(function(child) {
       child.updateMatrix();
     });
   },
   
+  updateRectangleArray: function() {
+    var contentSize = this._contentSize;
+    
+    if (this._shouldRender3D) {
+      this.rectangleArray = new Float32Array([ 
+        0.0, 0.0, 0.0,
+        0.0 + contentSize.width, 0.0, 0.0,
+        0.0, 0.0 + contentSize.height, 0.0,
+        0.0, 0.0 + contentSize.height, 0.0,
+        0.0 + contentSize.width, 0.0, 0.0,
+        0.0 + contentSize.width, 0.0 + contentSize.height, 0.0]
+      );
+    }
+    else {
+      this.rectangleArray = new Float32Array([ 
+        0.0, 0.0,
+        0.0 + contentSize.width, 0.0,
+        0.0, 0.0 + contentSize.height,
+        0.0, 0.0 + contentSize.height,
+        0.0 + contentSize.width, 0.0,
+        0.0 + contentSize.width, 0.0 + contentSize.height]
+      );
+    }
+  },
+  
   program: null,
   
   currentProgram: {currentProgram: null},
   
-  _backgroundColor: null,
   render: function() {
     if (this._doesDraw) {
       var gl = getGL();
@@ -836,7 +984,8 @@ GameEngine.Node = GameEngine.Object.extend({
         parent.stencil();
       }
       
-      var program = this.program;
+      var shouldRender3D = this._shouldRender3D;
+      var program = shouldRender3D ? this.program3D : this.program;
       gl.useProgram(program);
       
       // look up where the vertex data needs to go.
@@ -844,10 +993,16 @@ GameEngine.Node = GameEngine.Object.extend({
       gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
       gl.bufferData(gl.ARRAY_BUFFER, this.rectangleArray, gl.STATIC_DRAW);
       gl.enableVertexAttribArray(positionLocation);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+      gl.vertexAttribPointer(positionLocation, shouldRender3D ? 3 : 2, gl.FLOAT, false, 0, 0);
       
       gl.uniform1f(program.alphaLocation, this._alpha);
-      gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
+      
+      if (this._shouldRender3D) {
+        gl.uniformMatrix4fv(program.matrixLocation, false, this._matrix);
+      }
+      else {
+        gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
+      }
       
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       
@@ -864,7 +1019,8 @@ GameEngine.Node = GameEngine.Object.extend({
   
   stencil: function() {
     var gl = getGL();
-    var program = this.program;
+    var shouldRender3D = this._shouldRender3D;
+    var program = shouldRender3D ? this.program3D : this.program;
     gl.useProgram(program);
     
     gl.clearStencil(0);
@@ -878,10 +1034,16 @@ GameEngine.Node = GameEngine.Object.extend({
     gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.rectangleArray, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(positionLocation, shouldRender3D ? 3 : 2, gl.FLOAT, false, 0, 0);
     
     gl.uniform1f(program.alphaLocation, this._alpha);
-    gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
+    
+    if (this._shouldRender3D) {
+      gl.uniformMatrix4fv(program.matrixLocation, false, this._matrix);
+    }
+    else {
+      gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
+    }
     
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
@@ -894,7 +1056,8 @@ GameEngine.Node = GameEngine.Object.extend({
   indexBuffer: null,
   indices: null,
   draw: function() {
-    if (!this.program) {
+    var program = this.shouldRender3D ? this.program3D : this.program;
+    if (!program) {
       return;
     }
     

@@ -1,7 +1,5 @@
 GameEngine.Scene = GameEngine.Node.extend({
   _className: "GameEngine.Scene",
-  backgroundColor: {r: 0.0, g: 0.0, b: 0.0, a: 1.0},
-  //{r: 126.0 / 255.0, g: 211.0 / 255.0, b: 33.0 / 255.0, a: 1.0},
   
   /** 
    *  @property {Boolean} dirty 
@@ -29,6 +27,14 @@ GameEngine.Scene = GameEngine.Node.extend({
   },
   
   onExit: function() {
+  
+  },
+  
+  sceneTransitionTo: function(completion) {
+    
+  },
+  
+  sceneTransitionFrom: function(completion) {
   
   },
   

@@ -7,6 +7,7 @@ uniform sampler2D u_image;
 varying vec2 v_texCoord;
 uniform float tAlpha;
 uniform vec4 overlayColour;
+varying float rotationDarknes;
 
 void main() {
    // Look up a color from the texture.
@@ -17,6 +18,16 @@ void main() {
    
    gl_FragColor = color;
    gl_FragColor.a *= tAlpha;
+   
+//   float darknes = 1.0 - rotationDarknes;
+   gl_FragColor.r -= rotationDarknes;
+   gl_FragColor.g -= rotationDarknes;
+   gl_FragColor.b -= rotationDarknes;
+//   gl_FragColor.a -= rotationDarknes;
+   
+//   gl_FragColor = vec4(gl_FragColor.rgb, );
+   //gl_FragColor.a);
+   
 //   gl_FragColor *= overlayColor;
 //   gl_FragColor.r *= overlayColor.r;
    

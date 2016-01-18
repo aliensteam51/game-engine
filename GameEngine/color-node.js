@@ -8,12 +8,15 @@ GameEngine.ColorNode = GameEngine.Node.extend({
    color: {r: 144.0 / 255.0, g: 19.0 / 255.0, b: 254.0 / 255.0, a: 1.0},
 
   /**
-   *  @property {Boolean} loaded
+   *  @property {Boolean} _loaded
    *  @description If the colour node is loaded or not
    */
-  loaded: false,
+  _loaded: false,
+  
+  _global: {},
   
   init: function(contentSize, color, loadCallback) {
+    this._global.colorNode = {};
     this._doesDraw = true;
   
     this._super(contentSize, loadCallback);
@@ -36,8 +39,6 @@ GameEngine.ColorNode = GameEngine.Node.extend({
   /* CANVAS METHODS */
   
   renderForCanvas: function() {
-    console.log("RENDER FOR CANVAS");
-	
     var canvas = getCanvas();
     var context = canvas.getContext('2d');
     
@@ -76,6 +77,11 @@ GameEngine.ColorNode = GameEngine.Node.extend({
   /* WEBGL METHODS */
   
   createProgram: function(completion) {
+    if (this._global.program) {
+      completion(this._global.program)
+      return;
+    }
+  
     var script1 = document.getElementById("color-node.fsh");
     var script2 = document.getElementById("node.vsh");
     var scripts = [script1, script2];
@@ -84,26 +90,42 @@ GameEngine.ColorNode = GameEngine.Node.extend({
     loadScripts(scripts, 0, function() {
       var gl = getGL();
       var program = createProgramFromScripts(gl, "color-node.fsh", "node.vsh");
+      this._global.program = program
       completion(program);
-    });
+    }.bind(this));
+  },
+  
+  createProgram3D: function(completion) {
+    if (this._global.program3D) {
+      completion(this._global.program3D);
+      return;
+    }
+  
+    var script1 = document.getElementById("color-node.fsh");
+    var script2 = document.getElementById("node-3d.vsh");
+    var scripts = [script1, script2];
+  
+    // First load the shader scripts
+    loadScripts(scripts, 0, function() {
+      var gl = getGL();
+      var program = createProgramFromScripts(gl, "color-node.fsh", "node-3d.vsh");
+      this._global.program3D = program;
+      completion(program);
+    }.bind(this));
   },
   
   setupGL: function(completion) {
-    this._super(function(program) {
+    this._super(function(programs) {
       var gl = getGL();
-      gl.useProgram(program);
-      
-      program.colorLocation = gl.getUniformLocation(program, "color");
-      
+      programs.forEach(function(program) {
+        gl.useProgram(program);
+        program.colorLocation = gl.getUniformLocation(program, "color");
+      });
       if (completion) {
         completion();
       }
     });
   },
-  
-  rectangleArray: null,
-  positionLocation: null,
-  colorLocation: null,
 
   render: function() {
     if (!this._loaded) {
@@ -112,8 +134,11 @@ GameEngine.ColorNode = GameEngine.Node.extend({
     
     // Get the variables we need
     var gl = getGL();
-    var program = this.program;
+    var shouldRender3D = this._shouldRender3D;
+    var program = shouldRender3D ? this.program3D : this.program;
     gl.useProgram(program);
+    
+    console.log("rectangleArray", this.rectangleArray, this._contentSize);
     
     // Setup the colour
     var color = this.color;

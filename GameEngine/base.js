@@ -68,6 +68,7 @@ var GameEngine = Class.extend({
 
 GameEngine.Object = Class.extend({
   _id: null,
+  _global: {},
   init: function() {
     this._id = generateUUID();
   },

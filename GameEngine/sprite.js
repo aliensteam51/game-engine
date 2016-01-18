@@ -5,9 +5,10 @@ GameEngine.Sprite = GameEngine.Node.extend({
   image: null,
   _renderImage: null,
   textures: null,
-  loaded: false,
+  _loaded: false,
   _overlayColour: {r: 0.0, g: 0.0, b: 0.0, a: 0.0},
   _testLoadCallback: null,
+  _global: {},
 
   init: function(url, loadCallback) {
     this._doesDraw = true;
@@ -110,7 +111,8 @@ GameEngine.Sprite = GameEngine.Node.extend({
   setOverlayColour: function(overlayColour) {
     this._overlayColour = overlayColour;
   
-    var program = this.program;
+    var shouldRender3D = this._shouldRender3D;
+    var program = shouldRender3D ? this.program3D : this.program;
     if (program) {
       var gl = getGL();
       gl.useProgram(program);
@@ -243,6 +245,11 @@ GameEngine.Sprite = GameEngine.Node.extend({
   },
   
   createProgram: function(completion) {
+    if (this._global.program) {
+      completion(this._global.program);
+      return;
+    }
+  
     var script1 = document.getElementById("sprite.fsh");
     var script2 = document.getElementById("sprite.vsh");
     var scripts = [script1, script2];
@@ -251,35 +258,57 @@ GameEngine.Sprite = GameEngine.Node.extend({
     loadScripts(scripts, 0, function() {
       var gl = getGL();
       var program = createProgramFromScripts(gl, "sprite.fsh", "sprite.vsh");
+      this._global.program = program;
       completion(program);
-    });
+    }.bind(this));
+  },
+  
+  createProgram3D: function(completion) {
+    if (this._global.program3D) {
+      completion(this._global.program3D)
+      return;
+    }
+  
+    var script1 = document.getElementById("sprite.fsh");
+    var script2 = document.getElementById("sprite-3d.vsh");
+    var scripts = [script1, script2];
+  
+    // First load the shader scripts
+    loadScripts(scripts, 0, function() {
+      var gl = getGL();
+      var program = createProgramFromScripts(gl, "sprite.fsh", "sprite-3d.vsh");
+      this._global.program3D = program;
+      completion(program);
+    }.bind(this));
   },
   
   /* WEBGL METHODS */
   setupGL: function(completion) {
-    this._super(function(program) {
+    this._super(function(programs) {
       var gl = getGL();
-      gl.useProgram(program);
-      
-      var texCoordBuffer = gl.createBuffer();
-      var rectangleTextureArray = new Float32Array([
-        0.0,  0.0,
-        1.0,  0.0,
-        0.0,  1.0,
-        0.0,  1.0,
-        1.0,  0.0,
-        1.0,  1.0]
-      );
-      
-      gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.STATIC_DRAW);
-      
-      program.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
-      gl.enableVertexAttribArray(program.texCoordLocation);
-      gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-      
-      program.overlayColourLocation = gl.getUniformLocation(program, "overlayColour");
-      gl.uniform4f(program.overlayColourLocation, 0.0, 0.0, 0.0, 0.0);
+      programs.forEach(function(program) {
+        gl.useProgram(program);
+        
+        var texCoordBuffer = gl.createBuffer();
+        var rectangleTextureArray = new Float32Array([
+          0.0,  0.0,
+          1.0,  0.0,
+          0.0,  1.0,
+          0.0,  1.0,
+          1.0,  0.0,
+          1.0,  1.0]
+        );
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.STATIC_DRAW);
+        
+        program.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+        gl.enableVertexAttribArray(program.texCoordLocation);
+        gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+        
+        program.overlayColourLocation = gl.getUniformLocation(program, "overlayColour");
+        gl.uniform4f(program.overlayColourLocation, 0.0, 0.0, 0.0, 0.0);
+      });
       
       if (completion) {
         completion();
@@ -296,7 +325,8 @@ GameEngine.Sprite = GameEngine.Node.extend({
     }
     
     var gl = getGL();
-    var program = this.program;
+    var shouldRender3D = this._shouldRender3D;
+    var program = shouldRender3D ? this.program3D : this.program;
     gl.useProgram(program);
     
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -310,6 +340,24 @@ GameEngine.Sprite = GameEngine.Node.extend({
     if (this.clipRect) {
       this._updateContent(this.clipRect);
     }
+      
+    var darkness = 0.0;
+    if (this._parent) {
+      var rotation = this._parent.getRotation();
+      if (rotation && rotation.x !== 0 || rotation.y !== 0 ||rotation.z !== 0) {
+        darkness = Math.min(Math.abs(rotation.y) / 90.0, 1.0);
+      }
+      
+      if (this._parent._parent) {
+        var rotation = this._parent._parent.getRotation();
+        if (rotation && rotation.x !== 0 || rotation.y !== 0 ||rotation.z !== 0) {
+          darkness = Math.min(Math.abs(rotation.y) / 90.0, 1.0);
+        }
+      }
+    }
+    
+    var nUniform = gl.getUniformLocation(program, "rotatedTest");
+    gl.uniform1f(nUniform, darkness);
     
     this._super();
   }

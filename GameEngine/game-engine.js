@@ -1,3 +1,9 @@
+GameEngine.Transition = {
+  None: 0,
+  Custom: 1,
+  Cube: 2
+};
+
 GameEngine.SharedEngine = GameEngine.Object.extend({
   currentScene: null,
   otherScenes: null,
@@ -16,7 +22,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     startDrawLoop();
   },
 
-  presentScene: function(scene) {
+  presentScene: function(scene, transition) {
     if (!scene instanceof GameEngine.Scene) {
       console.log("GameEngine.SharedEngine - presentScene: Scene is not a (subclass of) GameEngine.Scene");
       return;
@@ -42,6 +48,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     });
     
     var loadCount = loadSprites.length;
+    loadCount = 0;
     var loadFunction = function(sprite) {
       if (sprite) {
         sprite._testLoadCallback = null;
@@ -49,21 +56,58 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     
       loadCount--;
       if (loadCount === 0) {
-        if (previousScene) {
+        if (previousScene && transition === GameEngine.Transition.Cube) {
           var contentSize = previousScene.getContentSize();
-          previousScene.moveTo(0.5, {x: - contentSize.width, y: 0.0}, function() {
-            previousScene.onExit();
-            var otherScenes = this.otherScenes;
-            otherScenes.splice(otherScenes.indexOf(previousScene), 1);
-          }.bind(this));
+          previousScene.setAnchorPoint({x: 1.0, y: 0.0});
+          previousScene.setPosition({x: 1024.0, y: 0.0});
+          previousScene.rotateTo(1.0, {x: 0.0, y: -90.0, z: 0.0});
+          previousScene.moveTo(1.0, {x: 0.0, y: 0.0});
         }
       
         this.currentScene = scene;
         scene.dirty = true;
-        scene.onEnter();
-        var contentSize = scene.getContentSize();
-        scene.setPosition({x: contentSize.width, y: 0.0});
-        scene.moveTo(0.5, {x: 0.0, y: 0.0});
+//        scene.onEnter();
+        if (previousScene && transition === GameEngine.Transition.Cube) {
+          scene.setPosition({x: 1024.0, y: 0.0});
+          scene.setRotation({x: 0.0, y: -90.0, z: 0.0});
+          scene.rotateTo(1.0, {x: 0.0, y: 0.0, z: 0.0});
+          scene.moveTo(1.0, {x: 0.0, y: 0.0});
+        }
+        else if (transition === GameEngine.Transition.Custom) {
+          if (previousScene) {
+            var completionCount = 2;
+            var completionFunction = function() {
+              completionCount --;
+              if (completionCount === 0) {
+                scene.onEnter();
+                var index = otherScenes.indexOf(previousScene);
+                if (index !== -1) {
+                  otherScenes.splice(index, 1);
+                }
+              }
+            };
+          
+            previousScene.sceneTransitionFrom(function() {
+              completionFunction();
+            });
+            
+            scene.sceneTransitionTo(function() {
+              completionFunction();
+            });
+          }
+        }
+        else {
+          scene.setPosition({x: 0.0, y: 0.0});
+          scene.onEnter();
+          
+          if (previousScene) {
+            var index = otherScenes.indexOf(previousScene);
+            if (index !== -1) {
+              otherScenes.splice(index, 1);
+            }
+          }
+        }
+//        scene.moveTo(0.5, {x: 0.0, y: 0.0});
 //        this.otherScenes.push(scene);
       }
     }.bind(this);
@@ -99,15 +143,10 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
         
         currentScene._getRenderList().forEach(function(node) {
           if (!node._touchEnabled) {
-//            console.log("IGNORING", node.imageName, node);
             return;
-          }
-          else {
-            console.log("NOT IGNORING", node);
           }
         
           var position = node.positionInScene();
-          console.log("position", position);
           var contentSize = node._contentSize;
           var anchorPoint = node._anchorPoint;
           position.x -= contentSize.width * anchorPoint.x;
