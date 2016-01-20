@@ -7,32 +7,49 @@ function loadFile(url, completion) {
         completion(client.responseText);
       }
       else {
-        console.log("WARNING: loaded file without completion is pretty useless, stop doing that!!!");
+        console.warn("WARNING: loaded file without completion is pretty useless, stop doing that!!!");
       }
     }
   }
   client.send();
 }
 
-function loadScripts(scripts, index, completion) {
-  if (index === scripts.length || scripts.length === 0) {
+function loadScripts(scripts, completion) {
+  var scriptsCount = scripts.length;
+  if (scriptsCount === 0) {
     if (completion) {
       completion();
     }
     return;
   }
-  var script = scripts[index];
-  loadFile(script.src, function(text) {
-    script.text = text;
-    loadScripts(scripts, index + 1, completion);
-  });
+  
+  var completionFunction = function() {
+    scriptsCount --;
+    if (scriptsCount === 0) {
+      if (completion) {
+        completion();
+      }
+    }
+  };
+  
+  for (var i = 0; i < scriptsCount; i ++) {
+    var script = scripts[i];
+//  scripts.forEach(function(script) {
+    loadFile(script.src, function(text) {
+      this.text = text;
+      completionFunction();
+    }.bind(script));
+//  });
+  }
 }
 
 var images = {};
 
 function addImagesToCache(imageURLs, completion) {
   var completionCount = imageURLs.length;
-  imageURLs.forEach(function(imageURL) {
+  for (var i = 0; i < imageURLs.length; i ++) {
+    var imageURL = imageURLs[i];
+//  imageURLs.forEach(function(imageURL) {
     var image = new Image();
     image.src = imageURL;
     image.onload = function() {
@@ -44,7 +61,8 @@ function addImagesToCache(imageURLs, completion) {
         }
       }
     }
-  });
+//  });
+  }
 }
 
 function preloadFiles(urls, completion) {
@@ -55,7 +73,9 @@ function preloadFiles(urls, completion) {
     }
   }
   
-  urls.forEach(function(url) {
+  for (var i = 0; i < urls.length; i ++) {
+    var url = urls[i];
+//  urls.forEach(function(url) {
     loadImage(url, function(image) {
       preloadCount--;
       if (preloadCount === 0) {
@@ -64,7 +84,8 @@ function preloadFiles(urls, completion) {
         }
       }
     });
-  });
+//  });
+  }
 }
 
 function getImageFromCache(url) {

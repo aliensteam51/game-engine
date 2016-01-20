@@ -1,18 +1,21 @@
 attribute vec3 a_position;
 uniform vec3 u_resolution;
 
-attribute vec2 a_texCoord;
-varying vec2 v_texCoord;
-uniform mat4 u_matrix;
+attribute mat4 u_matrix;
+
+attribute float aAlpha;
+attribute vec4 aColour;
+
+varying float tAlpha;
+varying vec4 color;
 
 void main() {
-  // Pass the texCoord to the fragment shader
-  // The GPU will interpolate this value between points
-  v_texCoord = a_texCoord;
+  // Pass stuff
+  tAlpha = aAlpha;
+  color = aColour;
 
   // Multiply the position by the matrix.
   vec3 position = (u_matrix * vec4(a_position, 1)).xyz;
-  position.z = 0.0;
 
   // convert the position from pixels to 0.0 to 1.0
   vec3 zeroToOne = position / u_resolution;

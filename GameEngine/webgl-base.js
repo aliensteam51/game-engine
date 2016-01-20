@@ -74,7 +74,6 @@ function createShaderFromScript(gl, scriptId, opt_shaderType) {
 
   // extract the contents of the script tag.
   var shaderSource = shaderScript.text;
-
   // If we didn't pass in a type, use the 'type' from
   // the script tag.
   if (!opt_shaderType) {
@@ -99,7 +98,6 @@ function createShaderFromScript(gl, scriptId, opt_shaderType) {
 * @return {!WebGLProgram} A program
 */
 function createProgramFromScripts(gl, vertexShaderId, fragmentShaderId) {
-  console.log("CREATEPROGRAMFROMSCRIPTS");
   var vertexShader = createShaderFromScript(gl, vertexShaderId);
   var fragmentShader = createShaderFromScript(gl, fragmentShaderId);
   return createProgram(gl, vertexShader, fragmentShader);
@@ -213,7 +211,49 @@ function matrixMultiply(a, b) {
           a20 * b02 + a21 * b12 + a22 * b22];
 }
 
-function matrix3DMultiply(a, b) {
+function convert2DMatrix(matrix) {
+  var newMatrix = [];
+  
+  newMatrix[0] = matrix[0];
+  newMatrix[1] = matrix[1];
+  newMatrix[2] = matrix[2];
+  newMatrix[3] = 0.0;
+  
+  newMatrix[4] = matrix[3];
+  newMatrix[5] = matrix[4];
+  newMatrix[6] = matrix[5];
+  newMatrix[7] = 0.0;
+  
+  newMatrix[8] = 0.0;
+  newMatrix[9] = 0.0;
+  newMatrix[10] = matrix[8];
+  newMatrix[11] = 0.0;
+  
+  newMatrix[12] = matrix[6];
+  newMatrix[13] = matrix[7];
+  newMatrix[14] = 0.0;
+  newMatrix[15] = 1.0;
+  
+  return newMatrix;
+}
+
+function matrix3DMultiply(matrix1, matrix2) {
+  var a, b;
+
+  if (matrix1.length === 16) {
+    a = matrix1;
+  }
+  else if (matrix1.length === 9) {
+    a = convert2DMatrix(matrix1);
+  }
+  
+  if (matrix2.length === 16) {
+    b = matrix2;
+  }
+  else if (matrix2.length === 9) {
+    b = convert2DMatrix(matrix2);
+  }
+
   var a00 = a[0];
   var a01 = a[1];
   var a02 = a[2];

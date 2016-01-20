@@ -52,10 +52,14 @@ GameEngine.Scene = GameEngine.Node.extend({
   allChildren: function() {
     var children = [];
     
-    this._children.forEach(function(child) {
+    var sceneChildren = this._children;
+    for (var i = 0; i < sceneChildren.length; i ++) {
+      var child = sceneChildren[i];
+//    this._children.forEach(function(child) {
       children.push(child);
       this.getNodeChildren(child, children);
-    }.bind(this));
+//    }.bind(this));
+    }
     
     return children.sort(function(node1, node2) {
       return node1.zIndex - node2.zIndex;
@@ -67,9 +71,13 @@ GameEngine.Scene = GameEngine.Node.extend({
   },
   
   getNodeChildren: function(node, array) {
-    node._children.forEach(function(child) {
+    var nodeChildren = node._children;
+    for (var i = 0; i < nodeChildren.length; i ++) {
+      var child = nodeChildren[i];
+//    node._children.forEach(function(child) {
       array.push(child);
       this.getNodeChildren(child, array);
-    }.bind(this));
+//    }.bind(this));
+    }
   },
 });

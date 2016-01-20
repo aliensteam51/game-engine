@@ -16,10 +16,17 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     this.otherScenes = [];
   },
   
-  start: function() {
+  start: function(completion) {
     this.setup();
     this.startEvents();
-    startDrawLoop();
+    
+    GameEngine.sharedRenderManager.loadPrograms(function() {
+      startDrawLoop();
+    
+      if (completion) {
+        completion();
+      }
+    });
   },
 
   presentScene: function(scene, transition) {
@@ -36,16 +43,24 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     
     var loadSprites = [];
     
-    scene._children.forEach(function(child) {
-      if (!child.loaded) {
-        loadSprites.push(child);
+    var sceneChildren = scene._children;
+    for (var y = 0; y < sceneChildren.length; y ++) {
+      var sceneChild = sceneChildren[y];
+//    scene._children.forEach(function(child) {
+      if (!sceneChild.loaded) {
+        loadSprites.push(sceneChild);
       }
-      child._children.forEach(function(subchild) {
-        if (!subchild.loaded) {
-          loadSprites.push(subchild);
+      var children = sceneChild._children;
+      for (var i = 0; i < children.length; i ++) {
+      var child = children[i];
+//      sceneChild._children.forEach(function(subchild) {
+        if (!child.loaded) {
+          loadSprites.push(child);
         }
-      });
-    });
+//      });
+      }
+//    });
+    }
     
     var loadCount = loadSprites.length;
     loadCount = 0;
@@ -84,6 +99,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
                 if (index !== -1) {
                   otherScenes.splice(index, 1);
                 }
+                previousScene.onExit();
               }
             };
           
@@ -105,6 +121,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
             if (index !== -1) {
               otherScenes.splice(index, 1);
             }
+            previousScene.onExit();
           }
         }
 //        scene.moveTo(0.5, {x: 0.0, y: 0.0});
@@ -118,7 +135,9 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       loadFunction();
     }
     
-    loadSprites.forEach(function(loadSprite) {
+    for (var i = 0; i < loadSprites.length; i ++) {
+      var loadSprite = loadSprites[i];
+//    loadSprites.forEach(function(loadSprite) {
       if (!loadSprite.loaded) {
         loadSprite._testLoadCallback = function() {
           loadFunction(loadSprite);
@@ -127,7 +146,8 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       else {
         loadFunction(null);
       }
-    }.bind(this));
+//    }.bind(this));
+    }
   },
 
   startEvents: function() {
@@ -141,11 +161,14 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       if (currentScene) {
         currentScene.onTouchBegan(event);
         
-        currentScene._getRenderList().forEach(function(node) {
+        var renderList = currentScene._getRenderList();
+        for (var i = 0; i < renderList.length; i ++) {
+          var node = renderList[i];
+//        currentScene._getRenderList().forEach(function(node) {
           if (!node._touchEnabled) {
-            return;
+            continue;
           }
-        
+
           var position = node.positionInScene();
           var contentSize = node._contentSize;
           var anchorPoint = node._anchorPoint;
@@ -156,12 +179,12 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
           var inside = rectContainsPoint(rect, getEventPosition(event));
           if (inside) {
             if (node.onTouchBegan(event)) {
-              
               foundNode = node;
-              return;
+              break;
             }
           }
-        });
+//        });
+        }
       }
     }.bind(this), 1.0 / 30.0);
     
@@ -169,7 +192,10 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     canvas.onmousemove = throttle(function(event) {
       var currentScene = this.currentScene;
       if (currentScene) {
-        currentScene.allChildren().forEach(function(node) {
+        var allChildren = currentScene.allChildren();
+        for (var i = 0; i < allChildren.length; i ++) {
+          var node = allChildren[i];
+//        currentScene.allChildren().forEach(function(node) {
           var nodeIndex = insideNodes.indexOf(node);
           if (nodeIndex === -1 && isEventInsideNode(event, node)) {
             insideNodes.push(node);
@@ -179,7 +205,8 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
             insideNodes.splice(nodeIndex, 1);
             node.onMouseExit(event);
           }
-        });
+//        });
+        }
         
         if (foundNode) {
           foundNode.onTouchMoved(event);
@@ -251,7 +278,9 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
         this.renderCanvas();
       }
       else {
-        this.renderGL();
+        var renderScenes = this.otherScenes.slice();
+        renderScenes.push(currentScene);
+        GameEngine.sharedRenderManager.render(renderScenes);
       }
     }
   },
@@ -264,19 +293,39 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     var currentScene = this.currentScene;
     if (currentScene) {
       var children = currentScene._getRenderList();
-      children.forEach(function(node) {
-        node.render();
-        node.draw();
-      });
+      for (var i = 0; i < children.length; i ++) {
+        var node = children[i];
+//      children.forEach(function(node) {
+        if (node instanceof Array) {
+        
+        }
+        else {
+          node.render();
+          node.draw();
+        }
+//      });
+      }
     }
     
-    this.otherScenes.forEach(function(scene) {
+    var otherScenes = this.otherScenes;
+    for (var i = 0; i < otherScenes.length; i ++) {
+      var scene = otherScenes[i];
+//    this.otherScenes.forEach(function(scene) {
       var children = scene._getRenderList();
-      children.forEach(function(node) {
-        node.render();
-        node.draw();
-      });
-    });
+      for (var i = 0; i < children.length; i ++) {
+        var node = children[i];
+//      children.forEach(function(node) {
+        if (node instanceof Array) {
+        
+        }
+        else {
+          node.render();
+          node.draw();
+        }
+//      });
+      }
+//    });
+    }
   
     gl.flush();
   },
@@ -402,9 +451,13 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       context.fillStyle = "rgba(" + backgroundColor.r * 255.0 + ", " + backgroundColor.g * 255.0 + ", " + backgroundColor.b * 255.0 + ", " + backgroundColor.a + ")";
       context.fillRect(0.0, 0.0, canvas.width, canvas.height);
       
-      currentScene.allChildren().forEach(function(node) {
+      var allChildren = currentScene.allChildren;
+      for (var i = 0; i < allChildren.length; i ++) {
+        var node = allChildren[i];
+//      currentScene.allChildren().forEach(function(node) {
         node.renderForCanvas();
-      });
+//      });
+      }
     }
   },
   
@@ -484,6 +537,17 @@ function doDrawLoop() {
     gameEngine.performScheduledActions();
     gameEngine.render();
   }
+}
+
+var frames = 0;
+function testDraw() {
+  setTimeout(function() {
+    var gameEngine = GameEngine.sharedEngine;
+    gameEngine.performScheduledActions();
+    gameEngine.render();
+    frames ++;
+    testDraw();
+  }, 0);
 }
 
 function isEventInsideNode(event, node) {

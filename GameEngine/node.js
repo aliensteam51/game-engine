@@ -98,8 +98,10 @@ GameEngine.Node = GameEngine.Object.extend({
    */
   _clipsToBounds: false,
   
-  _shouldRender3D: true,
+  _shouldRender3D: false,
   _global: {},
+  _renderer: null,
+  _batchRenderer: null,
   
   /**
    *  @method init
@@ -107,34 +109,21 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example var node = new GameEngine.Node();
    */
-  init: function(contentSize, loadCallback) {
+  init: function(contentSize) {
     this._super();
     
     // Create basic information storage objects
     this._animationKeys = [];
     this._animationTimers = [];
     this._children = [];
+    this._renderer = GameEngine.nodeRenderer;
     
     // Set the nodes initial size
     if (contentSize) {
       this.setContentSize(contentSize);
     }
     
-    // Setup the node
-    this.setup(contentSize, loadCallback);
-  },
-  
-  setup: function(contentSize, loadCallback) {
-    this.load(function() {
-      this._update();
-      if (loadCallback) {
-        loadCallback();
-      }
-    }.bind(this));
-  },
-  
-  load: function(completion) {
-    this.setupGL(completion);
+    this._update();
   },
   
   addChild: function(child) {
@@ -162,9 +151,14 @@ GameEngine.Node = GameEngine.Object.extend({
     this._scene = scene;
     this.updateMatrix();
     this._update();
-    this._children.forEach(function(child) {
+    
+    var children = this._children;
+    for (var i = 0; i < children.length; i ++) {
+      var child = children[i];
+//    this._children.forEach(function(child) {
       child._setScene(scene);
-    });
+//    });
+    }
   },
   
   getScene: function() {
@@ -297,16 +291,71 @@ GameEngine.Node = GameEngine.Object.extend({
         return node1._zIndex - node2._zIndex;
       }.bind(this));
       
+      var newChildren = [];
+      var previousChild;
+      var batchArray;
+      for (var i = 0; i < children.length; i ++) {
+        var child = children[i];
+//      children.forEach(function(child) {
+        if (child !== this && child._zIndex > -1 && (child instanceof GameEngine.Sprite)) {
+          if (previousChild) {
+            if (previousChild.image.texture === child.image.texture) {
+              if (!batchArray) {
+                batchArray = [previousChild];
+              }
+              batchArray.push(child);
+              child.isAddded = true;
+              
+              var previousChildIndex = newChildren.indexOf(previousChild);
+              if (previousChildIndex !== -1) {
+                newChildren.splice(previousChildIndex, 1);
+              }
+              
+              previousChild = child;
+            }
+            else {
+              if (batchArray && batchArray.length > 0) {
+                newChildren.push(batchArray);
+              }
+            
+              batchArray = null;
+              previousChild = null;
+            }
+          }
+          else {
+            newChildren.push(child);
+            previousChild = child;
+          }
+        }
+        else {
+          newChildren.push(child);
+        }
+      }
+      if (previousChild && previousChild.isAddded) {
+        previousChild.isAddded = null;
+        var previousChildIndex = newChildren.indexOf(previousChild);
+        if (previousChildIndex !== -1) {
+          newChildren.splice(previousChildIndex, 1);
+        }
+      }
+      
+      if (batchArray) {
+        newChildren.push(batchArray);
+      }
+      
       var finalList = [];
-      children.forEach(function(child) {
-        if (child !== this) {
+      for (var i = 0; i < newChildren.length; i ++) {
+        var child = newChildren[i];
+//      newChildren.forEach(function(child) {
+        if (child !== this && !(child instanceof Array)) {
           var renderList = child._getRenderList();
           finalList.push.apply(finalList, renderList);
         }
         else {
-          finalList.push(this);
+          finalList.push(child);
         }
-      }.bind(this));
+//      }.bind(this));
+      }
       
       this._renderList = finalList;
     }
@@ -343,6 +392,8 @@ GameEngine.Node = GameEngine.Object.extend({
                         y: position.y !== null && position.y !== undefined ? position.y : 0.0, 
                         z: position.z !== null && position.z !== undefined ? position.z : 0.0};
     
+    this._translationMatrix = null;
+    this._ownMatrix = null;
     this.updateMatrix();
     this._update();
   },
@@ -401,8 +452,34 @@ GameEngine.Node = GameEngine.Object.extend({
       this._rotation = {x: rotation.x ? rotation.x : 0.0, y: rotation.y ? rotation.y : 0.0, z: rotation.z ? rotation.z : 0.0};
     }
     
+    if (this._rotation.x !== 0 || this._rotation.y !== 0 && !this._shouldRender3D) {
+      this._set3DMode(true);
+    }
+    
+    this._rotationMatrix = null;
+    this._translationMatrix = null;
+    this._moveOriginMatrix = null;
+    this._anchorScaleMatrix = null;
+    this._anchorScaleRotationMatrix = null;
+    this._ownMatrix = null;
+    
     this.updateMatrix();
     this._update();
+  },
+  
+  _set3DMode: function(enable) {
+    this._shouldRender3D = enable;
+    
+    this.updateRectangleArray();
+    this.updateMatrix();
+    
+    var children = this._children;
+    for (var i = 0; i < children.length; i ++) {
+      var child = children[i];
+//    this._children.forEach(function(child) {
+      child._set3DMode(enable);
+//    });
+    }
   },
   
   /**
@@ -517,13 +594,21 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   stopAllAnimations: function() {
-    this._animationTimers.forEach(function(timeout) {
+    var animationTimers = this._animationTimers;
+    for (var i = 0; i < animationTimers.length; i ++) {
+      var timeout = animationTimers[i];
+//    this._animationTimers.forEach(function(timeout) {
       clearTimeout(timeout);
-    });
-  
-    this._animationKeys.forEach(function(animationKey) {
+//    });
+    }
+    
+    var animationKeys = this._animationKeys;
+    for (var i = 0; i < animationKeys.length; i ++) {
+      var animationKey = animationKeys[i];
+//    this._animationKeys.forEach(function(animationKey) {
       GameEngine.sharedEngine.removeScheduledActionWithKey(animationKey);
-    });
+//    });
+    }
   },
   
   moveTo: function(duration, newPosition, completion) {
@@ -538,7 +623,7 @@ GameEngine.Node = GameEngine.Object.extend({
     var position = this._position;
     
     var animationKeys = this._animationKeys;
-    var animationID = "_moveBy_" + this._id;
+    var animationID = "_moveTo_" + this._id;
     animationKeys.push(animationID);
     
     var now = Date.now();
@@ -573,6 +658,30 @@ GameEngine.Node = GameEngine.Object.extend({
     if (percentage <= 1) {
       this.setPosition({x: startPosition.x + (xStep * percentage), y: startPosition.y + (yStep * percentage)});
     }
+  },
+  
+  moveBy: function(duration, movePosition, completion) {
+    var position = this._position;
+    
+    var animationKeys = this._animationKeys;
+    var animationID = "_moveBy_" + this._id;
+    animationKeys.push(animationID);
+    
+    var now = Date.now();
+    var gameEngine = GameEngine.sharedEngine;
+    
+    gameEngine.addScheduledActionWithKey(function() {
+      this._moveBy(position, moveToPosition, now, duration);
+    }.bind(this), animationID);
+  },
+  
+  _moveBy: function(startPosition, movePosition, startTime, duration) {
+    var xStep = movePosition.x / duration;
+    var yStep = movePosition.y / duration;
+    
+    var now = Date.now();
+    var elapsedTime = ((now - startTime) / 1000.0);
+    this.setPosition({x: startPosition.x + (xStep * elapsedTime), y: startPosition.y + (yStep * elapsedTime)});
   },
   
   fadeTo: function(duration, newAlpha, completion) {
@@ -677,7 +786,7 @@ GameEngine.Node = GameEngine.Object.extend({
     var rotation = this._rotation;
     
     var animationKeys = this._animationKeys;
-    var animationID = "_rotateBy_" + this._id;
+    var animationID = "_rotateTo_" + this._id;
     animationKeys.push(animationID);
     
     var now = Date.now();
@@ -721,6 +830,31 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
+  rotateBy: function(duration, newRotation, completion) {
+    var rotation = this._rotation;
+    
+    var animationKeys = this._animationKeys;
+    var animationID = "_rotateBy_" + this._id;
+    animationKeys.push(animationID);
+    
+    var now = Date.now();
+    var gameEngine = GameEngine.sharedEngine;
+    
+    gameEngine.addScheduledActionWithKey(function() {
+      this._rotateBy(rotation, (!isNaN(parseFloat(newRotation)) && isFinite(newRotation)) ? {x: 0.0, y: 0.0, z: newRotation} : newRotation, now, duration);
+    }.bind(this), animationID);
+  },
+  
+  _rotateBy: function(startDegrees, endDegrees, startTime, duration) {
+    var rotationStepX = endDegrees.x / duration;
+    var rotationStepY = endDegrees.y / duration;
+    var rotationStepZ = endDegrees.z / duration;
+    
+    var now = Date.now();
+    var elapsedTime = ((now - startTime) / 1000.0);
+    this.setRotation({x: startDegrees.x + (rotationStepX * elapsedTime), y: startDegrees.y + (rotationStepY * elapsedTime), z: startDegrees.z + (rotationStepZ * elapsedTime)});
+  },
+  
   _needsInitialUpdate: false,
   _update: function() {
     if (this._doesDraw || needsUpdate(this)) {
@@ -729,101 +863,6 @@ GameEngine.Node = GameEngine.Object.extend({
         scene.dirty = true;
       }
     }
-  },
-  
-  /* WEBGL METHODS */
-  
-  buffer: null,
-  resolutionLocation: null,
-  
-  createPrograms: function(completion) {
-    var programs = [];
-    this.createProgram(function(program1) {
-      programs.push(program1);
-      this.createProgram3D(function(program2) {
-        program2.is3D = true;
-        programs.push(program2);
-        completion(programs);
-      });
-    }.bind(this));
-  },
-  
-  createProgram: function(completion) {
-    if (this._global.program) {
-      completion(this._global.program);
-      return;
-    }
-  
-    var script1 = document.getElementById("node.fsh");
-    var script2 = document.getElementById("node.vsh");
-    var scripts = [script1, script2];
-  
-    // First load the shader scripts
-    loadScripts(scripts, 0, function() {
-      var gl = getGL();
-      var program = createProgramFromScripts(gl, "node.fsh", "node.vsh");
-      this._global.program = program;
-      completion(program);
-    }.bind(this));
-  },
-  
-  createProgram3D: function(completion) {
-    if (this._global.program3D) {
-      completion(this._global.program3D);
-      return;
-    }
-  
-    var script1 = document.getElementById("node.fsh");
-    var script2 = document.getElementById("node-3d.vsh");
-    var scripts = [script1, script2];
-  
-    // First load the shader scripts
-    loadScripts(scripts, 0, function() {
-      var gl = getGL();
-      var program = createProgramFromScripts(gl, "node.fsh", "node-3d.vsh");
-      this._global.program3D = program;
-      completion(program);
-    }.bind(this));
-  },
-  
-  setupGL: function(completion) {
-    this.createPrograms(function(programs) {
-      var gl = getGL();
-      programs.forEach(function(program) {
-        program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
-        program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-        program.positionLocation = gl.getAttribLocation(program, "a_position");
-        
-        if (this._doesDraw) {
-          program.alphaLocation = gl.getUniformLocation(program, "tAlpha");
-        
-          // Set the alpha mode and enable blending
-          gl.enable(gl.BLEND);
-          gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        }
-        
-        gl.useProgram(program);
-        
-        var canvas = getCanvas();
-        if (program.is3D) {
-          gl.uniform3f(program.resolutionLocation, canvas.width, canvas.height, canvas.width);
-        }
-        else {
-          gl.uniform2f(program.resolutionLocation, canvas.width, canvas.height);
-        }
-        
-        program.buffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(12), gl.DYNAMIC_DRAW);
-      }.bind(this));
-      
-      this.program = programs[0];
-      this.program3D = programs[1];
-      
-      if (completion) {
-        completion(programs);
-      }
-    }.bind(this));
   },
   
   needsScene: function() {
@@ -839,36 +878,75 @@ GameEngine.Node = GameEngine.Object.extend({
       if (this.needsScene() && !this._scene) {
         return;
       }
-    
-      var contentSize = this._contentSize;
       
       // Scale
-      var scale = this._scale;
-      var scaleMatrix = makeScale(scale, scale);
-      
-      // Rotation
-      var angleInDegrees = this._rotation.z;
-      var angleInRadians = angleInDegrees * Math.PI / 180;
-      rotationMatrix = makeRotation(angleInRadians);
-      
-      // Translation
-      var position = this._position;
-      var translationMatrix = makeTranslation(position.x, position.y);
-      
-      // Multiply them
-      var anchorPoint = this.getAnchorPoint();
-      var moveOriginMatrix = makeTranslation(- contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y);
-      var matrix = matrixMultiply(moveOriginMatrix, scaleMatrix);
-      matrix = matrixMultiply(matrix, rotationMatrix);
-      this._matrix = matrixMultiply(matrix, translationMatrix);
-      
-      if (this._parent && this._parent._matrix) {
-        this._matrix = matrixMultiply(this._matrix, this._parent._matrix);
+      var scaleMatrix = this._scaleMatrix;
+      if (!scaleMatrix) {
+        var scale = this._scale;
+        scaleMatrix = makeScale(scale, scale);
+        this._scaleMatrix = scaleMatrix;
       }
       
-      this._children.forEach(function(child) {
+      // Rotation
+      var rotationMatrix = this._rotationMatrix;
+      if (!rotationMatrix) {
+        var angleInDegrees = this._rotation.z;
+        var angleInRadians = angleInDegrees * Math.PI / 180;
+      
+        rotationMatrix = makeRotation(angleInRadians);
+        this._rotationMatrix = rotationMatrix;
+      }
+      
+      // Translation
+      var translationMatrix = this._translationMatrix;
+      if (!translationMatrix) {
+        var position = this._position;
+        translationMatrix = makeTranslation(position.x, position.y);
+        this._translationMatrix = translationMatrix;
+      }
+      
+      // Anchor Point
+      var moveOriginMatrix = this._moveOriginMatrix;
+      if (!moveOriginMatrix) {
+        var contentSize = this._contentSize;
+        var anchorPoint = this.getAnchorPoint();
+        moveOriginMatrix = makeTranslation(- contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y);
+        this._moveOriginMatrix = moveOriginMatrix;
+      }
+      
+      // Multiply them
+      var anchorScaleMatrix = this._anchorScaleMatrix;
+      if (!anchorScaleMatrix) {
+        anchorScaleMatrix = matrixMultiply(moveOriginMatrix, scaleMatrix);
+        this._anchorScaleMatrix = anchorScaleMatrix;
+      }
+      
+      var anchorScaleRotationMatrix = this._anchorScaleRotationMatrix;
+      if (!anchorScaleRotationMatrix) {
+        anchorScaleRotationMatrix = matrixMultiply(anchorScaleMatrix, rotationMatrix);
+        this._anchorScaleRotationMatrix = anchorScaleRotationMatrix;
+      }
+      
+      var ownMatrix = this._ownMatrix;
+      if (!ownMatrix) {
+        ownMatrix = matrixMultiply(anchorScaleRotationMatrix, translationMatrix);
+        this._ownMatrix = ownMatrix;
+      }
+      
+      if (this._parent && this._parent._matrix) {
+        this._matrix = matrixMultiply(ownMatrix, this._parent._matrix);
+      }
+      else {
+        this._matrix = ownMatrix;
+      }
+      
+      var children = this._children;
+      for (var i = 0; i < children.length; i ++) {
+        var child = children[i];
+//      this._children.forEach(function(child) {
         child.updateMatrix();
-      });
+//      });
+      }
     }
   },
   
@@ -876,7 +954,7 @@ GameEngine.Node = GameEngine.Object.extend({
     if (this.needsScene() && !this._scene) {
       return;
     }
-  
+    
     var contentSize = this._contentSize;
     
     // Scale
@@ -919,6 +997,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     matrix = scaleMatrix;
     if (this._parent && this._parent._matrix) {
+      var parentMatrix = this._parent._matrix;
       matrix = matrix3DMultiply(this._parent._matrix, scaleMatrix);
     }
     
@@ -936,11 +1015,16 @@ GameEngine.Node = GameEngine.Object.extend({
       matrix = matrix3DMultiply(matrix, rotationMatrixZ);
     }
     matrix = matrix3DMultiply(matrix, moveOriginMatrix);
+    
     this._matrix = matrix;
     
-    this._children.forEach(function(child) {
+    var children = this._children;
+    for (var i = 0; i < children.length; i ++) {
+      var child = children[i];
+//    this._children.forEach(function(child) {
       child.updateMatrix();
-    });
+//    });
+    }
   },
   
   updateRectangleArray: function() {
@@ -968,105 +1052,11 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
-  program: null,
-  
-  currentProgram: {currentProgram: null},
-  
-  render: function() {
-    if (this._doesDraw) {
-      var gl = getGL();
-      
-      var parent = this._parent;
-      if (parent && parent._clipsToBounds) {
-        gl.enable( gl.DEPTH_TEST );
-        gl.enable(gl.STENCIL_TEST);
-        
-        parent.stencil();
-      }
-      
-      var shouldRender3D = this._shouldRender3D;
-      var program = shouldRender3D ? this.program3D : this.program;
-      gl.useProgram(program);
-      
-      // look up where the vertex data needs to go.
-      var positionLocation = program.positionLocation;
-      gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, this.rectangleArray, gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(positionLocation);
-      gl.vertexAttribPointer(positionLocation, shouldRender3D ? 3 : 2, gl.FLOAT, false, 0, 0);
-      
-      gl.uniform1f(program.alphaLocation, this._alpha);
-      
-      if (this._shouldRender3D) {
-        gl.uniformMatrix4fv(program.matrixLocation, false, this._matrix);
-      }
-      else {
-        gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
-      }
-      
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      
-      
-      if (parent && parent._clipsToBounds) {
-        gl.disable( gl.DEPTH_TEST );
-        gl.disable(gl.STENCIL_TEST);
-      }
-    }
-  },
-  
   renderForCanvas: function() {
   },
   
-  stencil: function() {
-    var gl = getGL();
-    var shouldRender3D = this._shouldRender3D;
-    var program = shouldRender3D ? this.program3D : this.program;
-    gl.useProgram(program);
-    
-    gl.clearStencil(0);
-    gl.clear(gl.STENCIL_BUFFER_BIT);
-    gl.colorMask(false, false, false, false);
-    gl.stencilFunc(gl.ALWAYS, 1, ~0);
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
-    
-    // look up where the vertex data needs to go.
-    var positionLocation = program.positionLocation;
-    gl.bindBuffer(gl.ARRAY_BUFFER, program.buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, this.rectangleArray, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, shouldRender3D ? 3 : 2, gl.FLOAT, false, 0, 0);
-    
-    gl.uniform1f(program.alphaLocation, this._alpha);
-    
-    if (this._shouldRender3D) {
-      gl.uniformMatrix4fv(program.matrixLocation, false, this._matrix);
-    }
-    else {
-      gl.uniformMatrix3fv(program.matrixLocation, false, this._matrix);
-    }
-    
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-
-    gl.colorMask(true, true, true, true);
-    gl.depthMask(gl.TRUE);
-    gl.stencilFunc(gl.EQUAL, 1, ~0);
-    gl.stencilOp(gl.REPLACE, gl.REPLACE, gl.REPLACE);
-  },
-  
-  indexBuffer: null,
-  indices: null,
-  draw: function() {
-    var program = this.shouldRender3D ? this.program3D : this.program;
-    if (!program) {
-      return;
-    }
-    
-    if (!this._doesDraw) {
-      return;
-    }
-  
-    var gl = getGL();
-    
+  render: function() {
+    this._renderer.render(this);
   }
 
 });
@@ -1077,11 +1067,15 @@ function needsUpdate(node) {
   }
   
   var doesDraw = false;
-  node._children.forEach(function(child) {
+  var children = node._children;
+  for (var i = 0; i < children.length; i ++) {
+    var child = children[i];
+//  node._children.forEach(function(child) {
     if (child._doesDraw) {
       doesDraw = true;
     }
-  });
+//  });
+  }
   
   return doesDraw;
 }

@@ -225,26 +225,32 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
   combinedImageCanvas: function(canvasElementsOrImageNames) {
 
     var canvasElements = [];
-    canvasElementsOrImageNames.forEach(function(canvasElementOrImageName) {
+    for (var i = 0; i < canvasElementsOrImageNames.length; i ++) {
+      var canvasElementOrImageName = canvasElementsOrImageNames[i];
+//    canvasElementsOrImageNames.forEach(function(canvasElementOrImageName) {
       if (typeof canvasElementOrImageName === "string") {
         canvasElements.push(getImageFromCache(canvasElementOrImageName));
       }
       else {
         canvasElements.push(canvasElementOrImageName);
       }
-    });
+//    });
+    }
 
     // First get the cached textures and the size
     var cachedTextures = [];
     var largestSize = {width: 0.0, height: 0.0};
-    canvasElements.forEach(function(canvasElement) {
+    for (var i = 0; i < canvasElements.length; i ++) {
+      var canvasElement = canvasElements[i];
+//    canvasElements.forEach(function(canvasElement) {
       if (canvasElement.width > largestSize.width) {
         largestSize.width = canvasElement.width;
       }
       if (canvasElement.height > largestSize.height) {
         largestSize.height = canvasElement.height;
       }
-    });
+//    });
+    }
 
     // Get the render canvas and the context
     var canvas = document.createElement('canvas');
@@ -255,13 +261,16 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
     canvas.height = largestSize.height;
 
     // Draw the images
-    canvasElements.forEach(function(canvasElement) {
+    for (var i = 0; i < canvasElements.length; i ++) {
+      var canvasElement = canvasElements[i];
+//    canvasElements.forEach(function(canvasElement) {
       var x = (largestSize.width - canvasElement.width) / 2.0;
       var y = (largestSize.height - canvasElement.height) / 2.0;
 
       //draw
       context.drawImage(canvasElement, x, y);
-    });
+//    });
+    }
 
     return canvas;
   },
@@ -374,11 +383,16 @@ GameEngine.EffectHelper = GameEngine.Object.extend({
       callbackArrayPos.funcArray[funcIndexPos]();
     }
     // Now for each color in the 'Negative array' call its callback function!
-    Object.getOwnPropertyNames(callbackArrayNeg.rgbaMapping).forEach(function(value) {
+    var mappings = Object.getOwnPropertyNames(callbackArrayNeg.rgbaMapping);
+    for (var i = 0; i < mappings.length; i ++) {
+      var mapping = mappings[i];
+      
+//    Object.getOwnPropertyNames(callbackArrayNeg.rgbaMapping).forEach(function(value) {
       if (value !== color) {
-        callbackArrayNeg.funcArray[callbackArrayPos.rgbaMapping[value]]();
+        callbackArrayNeg.funcArray[callbackArrayPos.rgbaMapping[mapping]]();
       }
-    });
+//    });
+    }
   }
 });
 GameEngine.effectHelper = new GameEngine.EffectHelper;

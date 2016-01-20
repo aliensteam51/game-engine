@@ -10,14 +10,16 @@ GameEngine.Sprite = GameEngine.Node.extend({
   _testLoadCallback: null,
   _global: {},
 
-  init: function(url, loadCallback) {
+  init: function(url) {
+    this._super(null);
+  
     this._doesDraw = true;
-    
     this.url = url;
     this.textures = {};
-  
-    this._super(null, loadCallback);
+    this._renderer = GameEngine.spriteRenderer;
+    this._batchRenderer = GameEngine.batchSpriteRenderer;
     
+    this.load();
   },
   
   load: function(completion) {
@@ -38,7 +40,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
       this.setContentSize({width: image.width, height: image.height});
     }
   
-    this._super(function() {
+//    this._super(function() {
       var completionFunction = function(image) {
         this.setImage(image);
           this._loaded = true;
@@ -58,13 +60,13 @@ GameEngine.Sprite = GameEngine.Node.extend({
         completionFunction(image);
       }
       else {
-        console.log("DEBUG - GameEngine.Sprite - Loading image that was not preloaded", image);
+        console.log("DEBUG - GameEngine.Sprite - Loading image that was not preloaded", image, this.url);
         loadImage(this.url, function(image) {
           this.setContentSize({width: image.width, height: image.height});
           completionFunction(image);
         }.bind(this));
       }
-    }.bind(this));
+//    }.bind(this));
     
     
   },
@@ -91,8 +93,8 @@ GameEngine.Sprite = GameEngine.Node.extend({
       // Set the parameters so we can render any size image.
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
       // Upload the image into the texture.
@@ -168,7 +170,9 @@ GameEngine.Sprite = GameEngine.Node.extend({
   startFrameAnimation: function(imagePaths, frameDuration, completion) {
     var imageCount = imagePaths.length;
     
-    imagePaths.forEach(function(imagePath) {
+    for (var i = 0; i < imageCount; i ++) {
+      var imagePath = imagePaths[i];
+//    imagePaths.forEach(function(imagePath) {
       loadImage(imagePath, function(image) {
         this.frameDictionary[imagePath] = image;
         
@@ -177,7 +181,8 @@ GameEngine.Sprite = GameEngine.Node.extend({
           this._startFrameAnimation(0, imagePaths, frameDuration, completion);
         }
       }.bind(this));
-    }.bind(this));
+//    }.bind(this));
+    }
   },
   
   _startFrameAnimation: function(index, imagePaths, frameDuration, completion) {
@@ -243,123 +248,5 @@ GameEngine.Sprite = GameEngine.Node.extend({
     // Restore the transform
     context.restore();
   },
-  
-  createProgram: function(completion) {
-    if (this._global.program) {
-      completion(this._global.program);
-      return;
-    }
-  
-    var script1 = document.getElementById("sprite.fsh");
-    var script2 = document.getElementById("sprite.vsh");
-    var scripts = [script1, script2];
-  
-    // First load the shader scripts
-    loadScripts(scripts, 0, function() {
-      var gl = getGL();
-      var program = createProgramFromScripts(gl, "sprite.fsh", "sprite.vsh");
-      this._global.program = program;
-      completion(program);
-    }.bind(this));
-  },
-  
-  createProgram3D: function(completion) {
-    if (this._global.program3D) {
-      completion(this._global.program3D)
-      return;
-    }
-  
-    var script1 = document.getElementById("sprite.fsh");
-    var script2 = document.getElementById("sprite-3d.vsh");
-    var scripts = [script1, script2];
-  
-    // First load the shader scripts
-    loadScripts(scripts, 0, function() {
-      var gl = getGL();
-      var program = createProgramFromScripts(gl, "sprite.fsh", "sprite-3d.vsh");
-      this._global.program3D = program;
-      completion(program);
-    }.bind(this));
-  },
-  
-  /* WEBGL METHODS */
-  setupGL: function(completion) {
-    this._super(function(programs) {
-      var gl = getGL();
-      programs.forEach(function(program) {
-        gl.useProgram(program);
-        
-        var texCoordBuffer = gl.createBuffer();
-        var rectangleTextureArray = new Float32Array([
-          0.0,  0.0,
-          1.0,  0.0,
-          0.0,  1.0,
-          0.0,  1.0,
-          1.0,  0.0,
-          1.0,  1.0]
-        );
-        
-        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.STATIC_DRAW);
-        
-        program.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
-        gl.enableVertexAttribArray(program.texCoordLocation);
-        gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-        
-        program.overlayColourLocation = gl.getUniformLocation(program, "overlayColour");
-        gl.uniform4f(program.overlayColourLocation, 0.0, 0.0, 0.0, 0.0);
-      });
-      
-      if (completion) {
-        completion();
-      }
-    });
-  },
-  
-  test: {currentTexture: null, currentRectangleArray: null, currentAlpha: -1.0},
-  
-  render: function() {
-    var texture = this.texture;
-    if (!texture || !this._loaded) {
-      return;
-    }
-    
-    var gl = getGL();
-    var shouldRender3D = this._shouldRender3D;
-    var program = shouldRender3D ? this.program3D : this.program;
-    gl.useProgram(program);
-    
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    
-    if (this._overlayColour) {
-      var overlayColour = this._overlayColour;
-      gl.useProgram(program);
-      gl.uniform4f(program.overlayColourLocation, overlayColour.r, overlayColour.g, overlayColour.b, overlayColour.a);
-    }
-    
-    if (this.clipRect) {
-      this._updateContent(this.clipRect);
-    }
-      
-    var darkness = 0.0;
-    if (this._parent) {
-      var rotation = this._parent.getRotation();
-      if (rotation && rotation.x !== 0 || rotation.y !== 0 ||rotation.z !== 0) {
-        darkness = Math.min(Math.abs(rotation.y) / 90.0, 1.0);
-      }
-      
-      if (this._parent._parent) {
-        var rotation = this._parent._parent.getRotation();
-        if (rotation && rotation.x !== 0 || rotation.y !== 0 ||rotation.z !== 0) {
-          darkness = Math.min(Math.abs(rotation.y) / 90.0, 1.0);
-        }
-      }
-    }
-    
-    var nUniform = gl.getUniformLocation(program, "rotatedTest");
-    gl.uniform1f(nUniform, darkness);
-    
-    this._super();
-  }
   
 });

@@ -123,11 +123,14 @@ GameEngine.SoundPlayer = GameEngine.Object.extend({
         }
         
         if (audioSources) {
-          audioSources.forEach(function(audioSource) {
+          for (var i = 0; i < audioSources.length; i ++) {
+            var audioSource = audioSources[i];
+//          audioSources.forEach(function(audioSource) {
             if (audioSource) {
               audioSource.stop(0);
             }
-          });
+//          });
+          }
         }
       }
       else {
@@ -142,9 +145,12 @@ GameEngine.SoundPlayer = GameEngine.Object.extend({
         }
         
         if (audioElements) {
-          audioElements.forEach(function(audio) {
+          for (var i = 0; i < audioElements.length; i ++) {
+            var audio = audioElements[i];
+//          audioElements.forEach(function(audio) {
             audio.pause();
-          });
+//          });
+          }
         }
       }
     }

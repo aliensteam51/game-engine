@@ -1,17 +1,18 @@
-precision mediump float;
-
-attribute vec2 a_position;
 uniform vec2 u_resolution;
+attribute mat3 u_matrix;
+attribute vec2 a_position;
 
-attribute vec2 a_texCoord;
-uniform mat3 u_matrix;
-varying vec2 v_texCoord;
+attribute float aAlpha;
+attribute vec4 aColour;
+
+varying float tAlpha;
+varying vec4 color;
 
 void main() {
-  // Pass the texCoord to the fragment shader
-  // The GPU will interpolate this value between points
-  v_texCoord = a_texCoord;
-  
+  // Pass stuff
+  tAlpha = aAlpha;
+  color = aColour;
+
   // Multiply the position by the matrix.
   vec2 position = (u_matrix * vec3(a_position, 1)).xy;
 
