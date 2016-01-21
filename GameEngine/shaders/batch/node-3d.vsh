@@ -1,3 +1,4 @@
+// TODO: make names more uniform
 attribute vec3 a_position;
 uniform vec3 u_resolution;
 

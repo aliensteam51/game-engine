@@ -44,6 +44,7 @@ function loadScripts(scripts, completion) {
 }
 
 var images = {};
+var preloadedJSONFiles = {};
 
 function addImagesToCache(imageURLs, completion) {
   var completionCount = imageURLs.length;
@@ -73,19 +74,61 @@ function preloadFiles(urls, completion) {
     }
   }
   
+  var completionFunction = function() {
+    preloadCount--;
+    if (preloadCount === 0) {
+      if (completion) {
+        completion();
+      }
+    }
+  };
+  
   for (var i = 0; i < urls.length; i ++) {
     var url = urls[i];
-//  urls.forEach(function(url) {
-    loadImage(url, function(image) {
-      preloadCount--;
-      if (preloadCount === 0) {
-        if (completion) {
-          completion();
-        }
-      }
-    });
-//  });
+    var extension = getFileExtension(url);
+    if (isImageExtension(extension)) {
+      loadImage(url, completionFunction);
+    }
+    else if (extension === "json") {
+      loadJSON(url, completionFunction);
+    }
+    else {
+      console.warn("GameEngine - utils.js (preloadFiles): Tried to preload unkown file type", url);
+    }
   }
+}
+
+function loadJSON(url, completion) {
+  loadFile(url, function(data) {
+    var JSONObject = JSON.parse(data);
+    if (JSONObject) {
+      preloadedJSONFiles[url] = JSONObject;
+      if (completion) {
+        completion();
+      }
+    }
+    else {
+      console.warn("GameEngine - utils.js (loadJSON): Could not load JSON file", url);
+      
+      if (completion) {
+        completion();
+      }
+    }
+  });
+}
+
+function getJSONFromCache(url) {
+  return preloadedJSONFiles[url];
+}
+
+// source: http://stackoverflow.com/questions/190852/how-can-i-get-file-extensions-with-javascript
+function getFileExtension(url) {
+  return url.slice((url.lastIndexOf(".") - 1 >>> 0) + 2);
+}
+
+function isImageExtension(extension) {
+  var supportedImageExtensions = ["jpg", "jpeg", "png"];
+  return supportedImageExtensions.indexOf(extension) !== -1;
 }
 
 function getImageFromCache(url) {

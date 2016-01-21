@@ -19,7 +19,82 @@ GameEngine.Sprite = GameEngine.Node.extend({
     this._renderer = GameEngine.spriteRenderer;
     this._batchRenderer = GameEngine.batchSpriteRenderer;
     
-    this.load();
+    if (url) {
+      this.load();
+    }
+  },
+  
+  _atlas: null,
+  setAtlas: function(imageURL, jsonURL, frameFileName) {
+    this.url = imageURL;
+    this._atlas = getJSONFromCache(jsonURL);
+    
+    this.load(function() {
+      this.setFrameImage(frameFileName);
+    }.bind(this));
+  },
+  
+  setFrameImage: function(frameFileName) {
+    var atlas = this._atlas;
+    var image = this.image;
+    var frames = atlas["frames"];
+    
+    var foundFrame;
+    for (var i = 0; i < frames.length; i ++) {
+      var frame = frames[i];
+      var filename = frame["filename"];
+      if (filename === frameFileName) {
+        foundFrame = frame;
+      }
+    }
+    
+    var imageWidth = image.width;
+    var imageHeight = image.height;
+    
+    var inFrame = foundFrame.frame;
+    var frame = {x: inFrame.x, y: inFrame.y, width: inFrame.w, height: inFrame.h};
+    var sourceSize = foundFrame["spriteSourceSize"];
+    this._texturePadding = {left: sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.w - frame.width - sourceSize.x, top: sourceSize.y};
+    this.setContentSize({width: sourceSize.w, height: sourceSize.h});
+    
+    frame.y = image.height - frame.y - frame.height;
+    
+    frame.x /= image.width;
+    frame.y /= image.height;
+    frame.width /= image.width;
+    frame.height /= image.height;
+    
+//    this.rectangleTextureArray = new Float32Array([
+//      frame.x,            frame.y,
+//      frame.x + frame.width,  frame.y,
+//      frame.x,            frame.y + frame.height,
+//      frame.x,            frame.y + frame.height,
+//      frame.x + frame.width,  frame.y,
+//      frame.x + frame.width,  frame.y + frame.height]
+//    );
+    
+    this.rectangleTextureArray = new Float32Array([
+      frame.x + frame.width, frame.y + frame.height,
+      frame.x + frame.width, frame.y,
+      frame.x, frame.y,
+      frame.x, frame.y + frame.height
+    ]);
+    
+    /*
+    rectangleTextureArray[index + 0] = 0.0;
+        rectangleTextureArray[index + 1] = 0.0;
+        
+        rectangleTextureArray[index + 2] = 0.0;
+        rectangleTextureArray[index + 3] = 1.0;
+        
+        rectangleTextureArray[index + 4] = 1.0;
+        rectangleTextureArray[index + 5] = 1.0;
+        
+        rectangleTextureArray[index + 6] = 1.0;
+        rectangleTextureArray[index + 7] = 0.0;
+        */
+    
+    this._update();
   },
   
   load: function(completion) {

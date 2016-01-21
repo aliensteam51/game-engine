@@ -1,7 +1,7 @@
 GameEngine.NodeRenderer = GameEngine.Renderer.extend({
   _className: "GameEngine.NodeRenderer",
-  _programScripts: [["node.fsh", "node.vsh"], ["node.fsh", "node-3d.vsh"]],
-  _programKeys: ["program", "program3D"],
+  _programScripts: [["node.fsh", "simple-node.vsh"], ["node.fsh", "node.vsh"], ["node.fsh", "node-3d.vsh"]],
+  _programKeys: ["simpleProgram", "program", "program3D"],
   _doesDraw: false,
   
   setupGL: function() {
@@ -11,7 +11,16 @@ GameEngine.NodeRenderer = GameEngine.Renderer.extend({
       var programKey = programKeys[i];
 //    this._programKeys.forEach(function(programKey) {
       var program = this[programKey];
-      program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
+      
+      if (programKey === "simpleProgram") {
+        program.translationLocation = gl.getUniformLocation(program, "u_translation");
+        program.rotationLocation = gl.getUniformLocation(program, "u_rotation");
+        program.scaleLocation = gl.getUniformLocation(program, "u_scale");
+      }
+      else {
+        program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
+      }
+        
       program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
       program.positionLocation = gl.getAttribLocation(program, "a_position");
       
@@ -67,7 +76,6 @@ GameEngine.NodeRenderer = GameEngine.Renderer.extend({
         gl.uniformMatrix4fv(program.matrixLocation, false, node._matrix);
       }
       else {
-        console.log("MATRIX", node._matrix, node.url);
         gl.uniformMatrix3fv(program.matrixLocation, false, node._matrix);
       }
       
@@ -105,7 +113,6 @@ GameEngine.NodeRenderer = GameEngine.Renderer.extend({
       gl.uniformMatrix4fv(program.matrixLocation, false, node._matrix);
     }
     else {
-      console.log("MATRIX", node._matrix, node.url);
       gl.uniformMatrix3fv(program.matrixLocation, false, node._matrix);
     }
     

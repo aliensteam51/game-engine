@@ -1,7 +1,7 @@
 GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
   _className: "GameEngine.BatchNodeRenderer",
-  _programScripts: [["batch-node.fsh", "batch-node.vsh"], ["batch-node.fsh", "batch-node-3d.vsh"]],
-  _programKeys: ["program", "program3D"],
+  _programScripts: [["batch-node.fsh", "simple-batch-node.vsh"], ["batch-node.fsh", "batch-node.vsh"], ["batch-node.fsh", "batch-node-3d.vsh"]],
+  _programKeys: ["simpleProgram", "program", "program3D"],
   _doesDraw: false,
   
   setupGL: function() {
@@ -13,8 +13,18 @@ GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
       var program = this[programKey];
       
       program.resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-      program.matrixLocation = gl.getAttribLocation(program, "u_matrix");
       program.positionLocation = gl.getAttribLocation(program, "a_position");
+      
+      if (programKey === "simpleProgram") {
+        program.translationLocation = gl.getAttribLocation(program, "u_translation");
+        program.rotationLocation = gl.getAttribLocation(program, "u_rotation");
+        program.scaleLocation = gl.getAttribLocation(program, "u_scale");
+        program.anchorpointLocation = gl.getAttribLocation(program, "u_anchorpoint");
+        program.sizeLocation = gl.getAttribLocation(program, "u_size");
+      }
+      else {
+        program.matrixLocation = gl.getAttribLocation(program, "u_matrix");
+      }
       
       if (this._doesDraw) {
         program.alphaLocation = gl.getAttribLocation(program, "aAlpha");
@@ -36,8 +46,16 @@ GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
       
       program.positionBuffer = gl.createBuffer();
       
-      
-      program.matrixBuffer = gl.createBuffer();
+      if (programKey === "simpleProgram") {
+        program.translationBuffer = gl.createBuffer();
+        program.rotationBuffer = gl.createBuffer();
+        program.scaleBuffer = gl.createBuffer();
+        program.anchorpointBuffer = gl.createBuffer();
+        program.sizeBuffer = gl.createBuffer();
+      }
+      else {
+        program.matrixBuffer = gl.createBuffer();
+      }
       program.alphaBuffer = gl.createBuffer();
       program.indexBuffer = gl.createBuffer();
       
@@ -63,148 +81,121 @@ GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
 //      }
       
       var shouldRender3D = false;
+      
+      var renderMode = nodes[0]._renderMode;
+      
       // = node._shouldRender3D;
-      var program = this.program;
+      var program = this[this._programKeys[renderMode]];
       //shouldRender3D ? this.program3D : this.program;
       gl.useProgram(program);
       
       // MATRIX
-      var matrixSize = shouldRender3D ? 16 : 9;
-      
-      var matrixArray = this.matrixArray;
-      if (!matrixArray) {
-        matrixArray = new Float32Array(nodes.length * 6 * matrixSize);
-        var index = 0;
-        for (var y = 0; y < nodes.length; y ++) {
-          var node = nodes[y];
-//        nodes.forEach(function(node) {
-          var matrix = node._matrix;
-          for (var i = 0; i < 4; i ++) {
-            for (var x = 0; x < matrix.length; x ++) {
-              matrixArray[index] = matrix[x];
-              index ++;
+      if (renderMode === GameEngine.RenderMode.Normal) {
+        var matrixSize = shouldRender3D ? 16 : 9;
+        
+        var matrixArray = this.matrixArray;
+        if (!matrixArray) {
+          matrixArray = new Float32Array(nodes.length * 6 * matrixSize);
+          var index = 0;
+          for (var y = 0; y < nodes.length; y ++) {
+            var node = nodes[y];
+            var matrix = node._matrix;
+            for (var i = 0; i < 4; i ++) {
+              for (var x = 0; x < matrix.length; x ++) {
+                matrixArray[index] = matrix[x];
+                index ++;
+              }
             }
           }
-//        });
+          this.matrixArray = matrixArray;
         }
-        this.matrixArray = matrixArray;
-      }
-      else {
-        var index = 0;
-        for (var y = 0; y < nodes.length; y ++) {
-          var node = nodes[y];
-//        nodes.forEach(function(node) {
-          var matrix = node._matrix;
-          for (var i = 0; i < 4; i ++) {
-            for (var x = 0; x < matrix.length; x ++) {
-              matrixArray[index] = matrix[x];
-              index ++;
+        else {
+          var index = 0;
+          for (var y = 0; y < nodes.length; y ++) {
+            var node = nodes[y];
+            var matrix = node._matrix;
+            for (var i = 0; i < 4; i ++) {
+              for (var x = 0; x < matrix.length; x ++) {
+                matrixArray[index] = matrix[x];
+                index ++;
+              }
             }
           }
-//        });
         }
-      }
-      
-//      console.log("matrixArray", matrixArray);
-      
-      var byteSize = matrixArray.BYTES_PER_ELEMENT;
-      
-      var matrixLocation = program.matrixLocation;
-      gl.bindBuffer(gl.ARRAY_BUFFER, program.matrixBuffer);
-      
-      var matrixCreated = this._matrixCreated;
-      if (!matrixCreated) {
-        this._matrixCreated = true;
-        gl.bufferData(gl.ARRAY_BUFFER, matrixArray, gl.DYNAMIC_DRAW);
-      }
-      else {
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, matrixArray);
-      }
-      
-      var size = shouldRender3D ? 4 : 3;
-      gl.enableVertexAttribArray(matrixLocation);
-      gl.vertexAttribPointer(matrixLocation, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * byteSize, 0);
-      
-      gl.enableVertexAttribArray(matrixLocation + 1);
-      gl.vertexAttribPointer(matrixLocation + 1, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * byteSize, size * byteSize);
-      
-      gl.enableVertexAttribArray(matrixLocation + 2);
-      gl.vertexAttribPointer(matrixLocation + 2, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * byteSize, (size * byteSize) * 2);
+        
+        var byteSize = matrixArray.BYTES_PER_ELEMENT;
+        
+        var matrixLocation = program.matrixLocation;
+        gl.bindBuffer(gl.ARRAY_BUFFER, program.matrixBuffer);
+        
+        var matrixCreated = this._matrixCreated;
+        if (!matrixCreated) {
+          this._matrixCreated = true;
+          gl.bufferData(gl.ARRAY_BUFFER, matrixArray, gl.DYNAMIC_DRAW);
+        }
+        else {
+          gl.bufferSubData(gl.ARRAY_BUFFER, 0, matrixArray);
+        }
+        
+        var size = shouldRender3D ? 4 : 3;
+        gl.enableVertexAttribArray(matrixLocation);
+        gl.vertexAttribPointer(matrixLocation, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * byteSize, 0);
+        
+        gl.enableVertexAttribArray(matrixLocation + 1);
+        gl.vertexAttribPointer(matrixLocation + 1, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * byteSize, size * byteSize);
+        
+        gl.enableVertexAttribArray(matrixLocation + 2);
+        gl.vertexAttribPointer(matrixLocation + 2, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * byteSize, (size * byteSize) * 2);
 
-//      gl.enableVertexAttribArray(matrixLocation + 3);
-//      gl.vertexAttribPointer(matrixLocation + 3, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * size * byteSize, matrixSize * 4 * byteSize);
+//        gl.enableVertexAttribArray(matrixLocation + 3);
+//        gl.vertexAttribPointer(matrixLocation + 3, shouldRender3D ? 4 : 3, gl.FLOAT, false, matrixSize * size * byteSize, matrixSize * 4 * byteSize);
+      }
       
       // ALPHA
-      var alphaArray = this.alphaArray;
-      if (!alphaArray) {
-        alphaArray = new Float32Array(nodes.length * 6);
-        var index = 0;
-        for (var y = 0; y < nodes.length; y ++) {
-          var node = nodes[y];
-//        nodes.forEach(function(node) {
-          var alpha = node._alpha;
-          for (var i = 0; i < 6; i ++) {
-            alphaArray[index] = alpha;
-            index ++;
-          }
-//        });
-        }
-        this.alphaArray = alphaArray;
-//      }
+      this.uploadProperty(null, "_alpha", nodes, program.alphaLocation, program.alphaBuffer, false, 1);
       
-      var alphaLocation = program.alphaLocation;
-//      console.log("program", program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, program.alphaBuffer);
-      
-      var alphaCreated = this._alphaCreated;
-      if (!alphaCreated) {
-        this._alphaCreated = true;
-        gl.bufferData(gl.ARRAY_BUFFER, alphaArray, gl.DYNAMIC_DRAW);
-      }
-      else {
-        gl.bufferSubData(gl.ARRAY_BUFFER, 0, alphaArray);
-      }
-      
-      gl.enableVertexAttribArray(alphaLocation);
-      gl.vertexAttribPointer(alphaLocation, 1, gl.FLOAT, false, 0, 0);
+      if (renderMode === GameEngine.RenderMode.Simple) {
+        this.uploadProperty(null, "_translation_t", nodes, program.translationLocation, program.translationBuffer, false, 2);
+        this.uploadProperty(null, "_rotation_t", nodes, program.rotationLocation, program.rotationBuffer, false, 2);
+        this.uploadProperty(null, "_scale_t", nodes, program.scaleLocation, program.scaleBuffer, false, 2);
+        this.uploadProperty(null, "_contentSize_t", nodes, program.sizeLocation, program.sizeBuffer, false, 2);
+        this.uploadProperty(null, "_anchorPoint_t", nodes, program.anchorpointLocation, program.anchorpointBuffer, false, 2);
       }
       
       // POSITION
       rectangleSize = shouldRender3D ? 3 : 2;
       var rectangleArray = this.rectangleArray;
-      if (!rectangleArray) {
-        //shouldRender3D ? 18 : 12;
         var rectangleArray = new Float32Array(nodes.length * 12);
         var index = 0;
         for (var y = 0; y < nodes.length; y ++) {
           var node = nodes[y];
-//        nodes.forEach(function(node) {
           
           var contentSize = node._contentSize;
+          var texturePadding = node._texturePadding;
+          var left = texturePadding.left;
+          var bottom = texturePadding.bottom;
+          var right = texturePadding.right;
+          var top = texturePadding.top;
           
-          rectangleArray[index + 0] = 0.0;
-          rectangleArray[index + 1] = contentSize.height;
+          rectangleArray[index + 0] = left;
+          rectangleArray[index + 1] = contentSize.height - top;
           rectangleArray[index + 2] = 0.0;
           
-          rectangleArray[index + 3] = 0.0;
-          rectangleArray[index + 4] = 0.0;
+          rectangleArray[index + 3] = left;
+          rectangleArray[index + 4] = bottom;
           rectangleArray[index + 5] = 0.0
           
-          rectangleArray[index + 6] = contentSize.width;
-          rectangleArray[index + 7] = 0.0;
+          rectangleArray[index + 6] = contentSize.width - right;
+          rectangleArray[index + 7] = bottom;
           rectangleArray[index + 8] = 0.0
           
-          rectangleArray[index + 9] = contentSize.width;
-          rectangleArray[index + 10] = contentSize.height;
+          rectangleArray[index + 9] = contentSize.width - right;
+          rectangleArray[index + 10] = contentSize.height - top;
           rectangleArray[index + 11] = 0.0
           
           index += 12;
-//        });
         }
         this.rectangleArray = rectangleArray;
-      
-//      console.log("rectangleArray", rectangleArray);
-//      console.log("POSITION LENGTH = " + rectangleArray.length);
       
       var positionLocation = program.positionLocation;
       
@@ -220,13 +211,13 @@ GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
       }
       gl.enableVertexAttribArray(positionLocation);
       gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
-      }
+//      }
       
       // INDICES
       var indices = this.indices;
       if (!indices) {
         indices = new Uint16Array(nodes.length * 6);
-        for (var i = 0, j = 0; i < nodes.length * 4; i += 6, j += 4)
+        for (var i = 0, j = 0; i < nodes.length * 6; i += 6, j += 4)
         {
             indices[i + 0] = j + 0;
             indices[i + 1] = j + 1;
@@ -258,6 +249,54 @@ GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
 //        gl.disable(gl.STENCIL_TEST);
 //      }
     }
+  },
+  
+  arrays: null,
+  uploadProperty: function(property, propertyKey, nodes, location, buffer, recreate, propertyLength) {
+    var arrays = this.arrays;
+    if (!arrays) {
+      arrays = {};
+      this.arrays = arrays;
+    }
+  
+    var array = arrays[propertyKey];
+    if (!array || propertyKey === "_translation_t") {
+      array = new Float32Array(nodes.length * 4 * propertyLength);
+      var index = 0;
+      for (var y = 0; y < nodes.length; y ++) {
+        var node = nodes[y];
+        var nodeProperty = property !== null ? property : node[propertyKey];
+        for (var i = 0; i < 4; i ++) {
+          if (nodeProperty instanceof Array) {
+            for (var x = 0; x < nodeProperty.length; x ++) {
+              array[index] = nodeProperty[x];
+              index ++;
+            }
+          }
+          else {
+            array[index] = nodeProperty;
+            index ++;
+          }
+        }
+      }
+      arrays[propertyKey] = array;
+    }
+    else if (!recreate) {
+      return;
+    }
+      
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    
+    if (!buffer.isCreated) {
+      buffer.isCreated = true;
+      gl.bufferData(gl.ARRAY_BUFFER, array, gl.DYNAMIC_DRAW);
+    }
+    else {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, array);
+    }
+    
+    gl.enableVertexAttribArray(location);
+    gl.vertexAttribPointer(location, propertyLength, gl.FLOAT, false, 0, 0);
   },
   
   stencil: function(node) {

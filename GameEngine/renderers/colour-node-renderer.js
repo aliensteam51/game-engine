@@ -1,6 +1,6 @@
 GameEngine.ColourNodeRenderer = GameEngine.NodeRenderer.extend({
   _className: "GameEngine.ColourNodeRenderer",
-  _programScripts: [["color-node.fsh", "node.vsh"], ["color-node.fsh", "node-3d.vsh"]],
+  _programScripts: [["color-node.fsh", "simple-node.vsh"], ["color-node.fsh", "node.vsh"], ["color-node.fsh", "node-3d.vsh"]],
   _doesDraw: true,
 
   setupGL: function() {

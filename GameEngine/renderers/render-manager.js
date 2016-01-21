@@ -30,24 +30,19 @@ GameEngine.RenderManager = GameEngine.Object.extend({
     
     for (var y = 0; y < scenes.length; y ++) {
       var scene = scenes[y];
-//    scenes.forEach(function(scene) {
       if (scene) {
         var children = scene._getRenderList();
        
         for (var i = 0; i < children.length; i ++) {
           var child = children[i];
-//           console.log("RENDER", child);
-//        children.forEach(function(child) {
           if (child instanceof Array) {
             child[0]._batchRenderer.render(child);
           }
           else {
             child.render();
           }
-//        });
         }
       }
-//    });
     }
     
     gl.flush();

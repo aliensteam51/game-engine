@@ -1,6 +1,6 @@
 GameEngine.SpriteRenderer = GameEngine.NodeRenderer.extend({
   _className: "GameEngine.SpriteRenderer",
-  _programScripts: [["sprite.fsh", "sprite.vsh"], ["sprite.fsh", "sprite-3d.vsh"]],
+  _programScripts: [["sprite.fsh", "simple-sprite.vsh"], ["sprite.fsh", "sprite.vsh"], ["sprite.fsh", "sprite-3d.vsh"]],
   _doesDraw: true,
   
   setupGL: function() {
@@ -10,12 +10,10 @@ GameEngine.SpriteRenderer = GameEngine.NodeRenderer.extend({
     var programKeys = this._programKeys;
     for (var i = 0; i < programKeys.length; i ++) {
       var programKey = programKeys[i];
-//    this._programKeys.forEach(function(programKey) {
       var program = this[programKey];
       gl.useProgram(program);
       
-      var texCoordBuffer = gl.createBuffer();
-      var rectangleTextureArray = new Float32Array([
+      this.rectangleTextureArray = new Float32Array([
         0.0,  0.0,
         1.0,  0.0,
         0.0,  1.0,
@@ -24,16 +22,8 @@ GameEngine.SpriteRenderer = GameEngine.NodeRenderer.extend({
         1.0,  1.0]
       );
       
-      gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.STATIC_DRAW);
-      
-      program.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
-      gl.enableVertexAttribArray(program.texCoordLocation);
-      gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-      
       program.overlayColourLocation = gl.getUniformLocation(program, "overlayColour");
       gl.uniform4f(program.overlayColourLocation, 0.0, 0.0, 0.0, 0.0);
-//    }.bind(this));
     }
   },
   
@@ -55,6 +45,22 @@ GameEngine.SpriteRenderer = GameEngine.NodeRenderer.extend({
       gl.useProgram(program);
       gl.uniform4f(program.overlayColourLocation, overlayColour.r, overlayColour.g, overlayColour.b, overlayColour.a);
     }
+    
+    var rectangleTextureArray = sprite.rectangleTextureArray;
+    if (!rectangleTextureArray) {
+      rectangleTextureArray = this.rectangleTextureArray;
+    }
+    
+    var texCoordBuffer = gl.createBuffer();
+    program.texCoordBuffer = texCoordBuffer;
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.STATIC_DRAW);
+    
+    program.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
+    gl.enableVertexAttribArray(program.texCoordLocation);
+    gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+    
     this._super(sprite);
   }
 });

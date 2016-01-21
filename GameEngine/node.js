@@ -102,6 +102,7 @@ GameEngine.Node = GameEngine.Object.extend({
   _global: {},
   _renderer: null,
   _batchRenderer: null,
+  _renderMode: GameEngine.RenderMode.Normal,
   
   /**
    *  @method init
@@ -149,7 +150,10 @@ GameEngine.Node = GameEngine.Object.extend({
   
   _setScene: function(scene) {
     this._scene = scene;
-    this.updateMatrix();
+    
+    if (this._renderMode === GameEngine.RenderMode.Normal) {
+      this.updateMatrix();
+    }
     this._update();
     
     var children = this._children;
@@ -248,17 +252,14 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example node.setContentSize({width: 100.0, height: 100.0})
    */
-  clipRect: null,
   setContentSize: function(contentSize) {
-    var currentContentSize = this._contentSize;
-    if (currentContentSize.width === contentSize.width && currentContentSize.height === contentSize.height && this.rectangleArray) {
-      return;
-    }
-  
     this._contentSize = {width: contentSize.width, height: contentSize.height};
+    this._contentSize_t = [contentSize.width, contentSize.height];
     
     this.updateRectangleArray();
-    this.updateMatrix();
+    if (this._renderMode === GameEngine.RenderMode.Normal) {
+      this.updateMatrix();
+    }
     this._update();
   },
   
@@ -316,10 +317,10 @@ GameEngine.Node = GameEngine.Object.extend({
             else {
               if (batchArray && batchArray.length > 0) {
                 newChildren.push(batchArray);
+                batchArray = null;
               }
-            
-              batchArray = null;
-              previousChild = null;
+              newChildren.push(child);
+              previousChild = child;
             }
           }
           else {
@@ -391,10 +392,16 @@ GameEngine.Node = GameEngine.Object.extend({
     this._position = {  x: position.x !== null && position.x !== undefined ? position.x : 0.0, 
                         y: position.y !== null && position.y !== undefined ? position.y : 0.0, 
                         z: position.z !== null && position.z !== undefined ? position.z : 0.0};
-    
-    this._translationMatrix = null;
-    this._ownMatrix = null;
-    this.updateMatrix();
+                        
+                        
+    var scenePosition = this.positionInScene();
+    this._translation_t = [scenePosition.x, scenePosition.y];
+
+    if (this._renderMode === GameEngine.RenderMode.Normal) {
+      this._translationMatrix = null;
+      this._ownMatrix = null;
+      this.updateMatrix();
+    }
     this._update();
   },
   
@@ -440,6 +447,7 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example node.setRotation(180 or {x: 180.0, y: 0.0, z: 0.0})
    */
+  _rotation_t: [0.0, 1.0],
   setRotation: function(rotation) {
     if (this._rotation === rotation) {
       return;
@@ -453,32 +461,47 @@ GameEngine.Node = GameEngine.Object.extend({
     }
     
     if (this._rotation.x !== 0 || this._rotation.y !== 0 && !this._shouldRender3D) {
-      this._set3DMode(true);
+      this._setRenderMode(GameEngine.RenderMode.Advanced);
     }
     
-    this._rotationMatrix = null;
-    this._translationMatrix = null;
-    this._moveOriginMatrix = null;
-    this._anchorScaleMatrix = null;
-    this._anchorScaleRotationMatrix = null;
-    this._ownMatrix = null;
+    var shaderRotation = [];
+    var angleInRadians = rotation.z * Math.PI / 180;
+    shaderRotation[0] = Math.sin(angleInRadians);
+    shaderRotation[1] = Math.cos(angleInRadians);
+    this._rotation_t = shaderRotation;
+
+    if (this._renderMode === GameEngine.RenderMode.Normal) {
+      this._rotationMatrix = null;
+      this._translationMatrix = null;
+      this._moveOriginMatrix = null;
+      this._anchorScaleMatrix = null;
+      this._anchorScaleRotationMatrix = null;
+      this._ownMatrix = null;
+      
+      this.updateMatrix();
+    }
     
-    this.updateMatrix();
     this._update();
   },
   
-  _set3DMode: function(enable) {
-    this._shouldRender3D = enable;
-    
-    this.updateRectangleArray();
-    this.updateMatrix();
+  _setRenderMode: function(renderMode) {
+    this._renderMode = renderMode;
+  
+    if (renderMode === GameEngine.RenderMode.Normal) {
+      this._rotationMatrix = null;
+      this._translationMatrix = null;
+      this._moveOriginMatrix = null;
+      this._anchorScaleMatrix = null;
+      this._anchorScaleRotationMatrix = null;
+      this._ownMatrix = null;
+      
+      this.updateMatrix();
+    }
     
     var children = this._children;
     for (var i = 0; i < children.length; i ++) {
       var child = children[i];
-//    this._children.forEach(function(child) {
-      child._set3DMode(enable);
-//    });
+      child._setRenderMode(renderMode);
     }
   },
   
@@ -501,8 +524,10 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example node.setAnchorPoint({0.5, 0.5})
    */
+  _anchorPoint_t: [0.5, 0.5],
   setAnchorPoint: function(anchorPoint) {
     this._anchorPoint = {x: anchorPoint.x, y: anchorPoint.y};
+    this._anchorPoint_t = [anchorPoint.x, anchorPoint.y];
   },
   
   /**
@@ -524,14 +549,19 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example node.setRotation(180)
    */
+  _scale_t: [1.0, 1.0],
   setScale: function(scale) {
     if (scale === this._scale) {
       return;
     }
   
     this._scale = scale;
+    this._scale_t = [scale, scale];
     
-    this.updateMatrix();
+    if (this._renderMode === GameEngine.RenderMode.Normal) {
+      this.updateMatrix();
+    }
+    
     this._update();
   },
   
@@ -1027,27 +1057,34 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
+  _texturePadding: {left: 0.0, bottom: 0.0, right: 0.0, top: 0.0},
   updateRectangleArray: function() {
     var contentSize = this._contentSize;
     
+    var texturePadding = this._texturePadding;
+    var left = texturePadding.left;
+    var bottom = texturePadding.bottom;
+    var right = texturePadding.right;
+    var top = texturePadding.top;
+    
     if (this._shouldRender3D) {
       this.rectangleArray = new Float32Array([ 
-        0.0, 0.0, 0.0,
-        0.0 + contentSize.width, 0.0, 0.0,
-        0.0, 0.0 + contentSize.height, 0.0,
-        0.0, 0.0 + contentSize.height, 0.0,
-        0.0 + contentSize.width, 0.0, 0.0,
-        0.0 + contentSize.width, 0.0 + contentSize.height, 0.0]
+        left, bottom, 0.0,
+        contentSize.width - right, bottom, 0.0,
+        left, contentSize.height - top, 0.0,
+        left, contentSize.height - top, 0.0,
+        contentSize.width - right, bottom, 0.0,
+        contentSize.width - right, contentSize.height - top, 0.0]
       );
     }
     else {
       this.rectangleArray = new Float32Array([ 
-        0.0, 0.0,
-        0.0 + contentSize.width, 0.0,
-        0.0, 0.0 + contentSize.height,
-        0.0, 0.0 + contentSize.height,
-        0.0 + contentSize.width, 0.0,
-        0.0 + contentSize.width, 0.0 + contentSize.height]
+        left, bottom,
+        contentSize.width - right, bottom,
+        left, contentSize.height - top,
+        left, contentSize.height - top,
+        contentSize.width - right, bottom,
+        contentSize.width - right, contentSize.height - top]
       );
     }
   },
