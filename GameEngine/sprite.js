@@ -54,7 +54,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
     var inFrame = foundFrame.frame;
     var frame = {x: inFrame.x, y: inFrame.y, width: inFrame.w, height: inFrame.h};
     var sourceSize = foundFrame["spriteSourceSize"];
-    this._texturePadding = {left: sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.w - frame.width - sourceSize.x, top: sourceSize.y};
+    this._texturePadding = {left: sourceSize.w - frame.width - sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.x, top: sourceSize.y};
     this.setContentSize({width: sourceSize.w, height: sourceSize.h});
     
     this.textureFrame = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
