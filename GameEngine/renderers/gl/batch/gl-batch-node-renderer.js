@@ -1,5 +1,5 @@
-GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
-  _className: "GameEngine.BatchNodeRenderer",
+GameEngine.GLBatchNodeRenderer = GameEngine.GLRenderer.extend({
+  _className: "GameEngine.GLBatchNodeRenderer",
   _programScripts: [["batch-node.fsh", "simple-batch-node.vsh"], ["batch-node.fsh", "batch-node.vsh"], ["batch-node.fsh", "batch-node-3d.vsh"]],
   _programKeys: ["simpleProgram", "program", "program3D"],
   _doesDraw: false,
@@ -335,4 +335,3 @@ GameEngine.BatchNodeRenderer = GameEngine.Renderer.extend({
     gl.stencilOp(gl.REPLACE, gl.REPLACE, gl.REPLACE);
   },
 });
-GameEngine.batchNodeRenderer = new GameEngine.BatchNodeRenderer();

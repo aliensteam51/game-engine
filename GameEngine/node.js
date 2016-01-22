@@ -1093,7 +1093,8 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   render: function() {
-    this._renderer.render(this);
+    GameEngine.nodeRenderer.render(this);
+//    this._renderer.render(this);
   }
 
 });

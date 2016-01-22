@@ -63,9 +63,21 @@
   };
 })();
 
+/**
+ *
+ * @class GameEngine
+ * @description The base class of all the GameEngine objects
+ * @module GameEngine
+ */
 var GameEngine = Class.extend({
 });
 
+/**
+ *
+ * @class Object
+ * @description The base object, all objects in the GameEngine inherit from this object 
+ * @module GameEngine.Object
+ */
 GameEngine.Object = Class.extend({
   _id: null,
   _global: {},
@@ -78,6 +90,13 @@ GameEngine.Object = Class.extend({
   }
 });
 
+/**
+   *  @method generateUUID
+   *  @desription Generates a UUID string
+   *  @return Returns a UUID string object
+   *
+   *  @example var uuidString = generateUUID()
+   */
 function generateUUID() {
     var d = new Date().getTime();
     if(window.performance && typeof window.performance.now === "function") {

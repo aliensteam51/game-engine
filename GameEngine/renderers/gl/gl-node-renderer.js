@@ -1,5 +1,5 @@
-GameEngine.NodeRenderer = GameEngine.Renderer.extend({
-  _className: "GameEngine.NodeRenderer",
+GameEngine.GLNodeRenderer = GameEngine.GLRenderer.extend({
+  _className: "GameEngine.GLNodeRenderer",
   _programScripts: [["node.fsh", "simple-node.vsh"], ["node.fsh", "node.vsh"], ["node.fsh", "node-3d.vsh"]],
   _programKeys: ["simpleProgram", "program", "program3D"],
   _doesDraw: false,
@@ -124,4 +124,3 @@ GameEngine.NodeRenderer = GameEngine.Renderer.extend({
     gl.stencilOp(gl.REPLACE, gl.REPLACE, gl.REPLACE);
   },
 });
-GameEngine.nodeRenderer = new GameEngine.NodeRenderer();

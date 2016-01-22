@@ -1,4 +1,4 @@
-GameEngine.BatchSpriteRenderer = GameEngine.BatchNodeRenderer.extend({
+GameEngine.GLBatchSpriteRenderer = GameEngine.GLBatchNodeRenderer.extend({
   _className: "GameEngine.BatchSpriteRenderer",
   _programScripts: [["batch-sprite.fsh", "simple-batch-sprite.vsh"], ["batch-sprite.fsh", "batch-sprite.vsh"], ["batch-sprite.fsh", "batch-sprite-3d.vsh"]],
   _doesDraw: true,
@@ -106,4 +106,3 @@ GameEngine.BatchSpriteRenderer = GameEngine.BatchNodeRenderer.extend({
     this._super(sprites);
   }
 });
-GameEngine.batchSpriteRenderer = new GameEngine.BatchSpriteRenderer();

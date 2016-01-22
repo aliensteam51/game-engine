@@ -1,6 +1,6 @@
-GameEngine.BatchColourNodeRenderer = GameEngine.BatchNodeRenderer.extend({
-  _className: "GameEngine.BatchColourNodeRenderer",
-  _programScripts: [["batch-color-node.fsh", "simple-batch-node.vsh"], ["batch-color-node.fsh", "batch-node.vsh"], ["batch-color-node.fsh", "batch-node-3d.vsh"]],
+GameEngine.GLColourNodeRenderer = GameEngine.GLNodeRenderer.extend({
+  _className: "GameEngine.GLColourNodeRenderer",
+  _programScripts: [["color-node.fsh", "simple-node.vsh"], ["color-node.fsh", "node.vsh"], ["color-node.fsh", "node-3d.vsh"]],
   _doesDraw: true,
 
   setupGL: function() {
@@ -32,4 +32,3 @@ GameEngine.BatchColourNodeRenderer = GameEngine.BatchNodeRenderer.extend({
     this._super(colourNode);
   }
 });
-GameEngine.batchColourNodeRenderer = new GameEngine.BatchColourNodeRenderer();

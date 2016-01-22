@@ -1,5 +1,5 @@
-GameEngine.SpriteRenderer = GameEngine.NodeRenderer.extend({
-  _className: "GameEngine.SpriteRenderer",
+GameEngine.GLSpriteRenderer = GameEngine.GLNodeRenderer.extend({
+  _className: "GameEngine.GLSpriteRenderer",
   _programScripts: [["sprite.fsh", "simple-sprite.vsh"], ["sprite.fsh", "sprite.vsh"], ["sprite.fsh", "sprite-3d.vsh"]],
   _doesDraw: true,
   
@@ -64,4 +64,3 @@ GameEngine.SpriteRenderer = GameEngine.NodeRenderer.extend({
     this._super(sprite);
   }
 });
-GameEngine.spriteRenderer = new GameEngine.SpriteRenderer();

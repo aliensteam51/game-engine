@@ -20,7 +20,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     this.setup();
     this.startEvents();
     
-    GameEngine.sharedRenderManager.loadPrograms(function() {
+    GameEngine.sharedRenderManager.setup(function() {
       startDrawLoop();
     
       if (completion) {
@@ -273,13 +273,14 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     var currentScene = this.currentScene;
     if (currentScene && currentScene.dirty) {
       currentScene.dirty = false;
-    
+      
       if (this.legacyCanvasMode) {
         this.renderCanvas();
       }
       else {
         var renderScenes = this.otherScenes.slice();
         renderScenes.push(currentScene);
+        
         GameEngine.sharedRenderManager.render(renderScenes);
       }
     }
@@ -434,6 +435,11 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
   renderCanvas: function() {
     var canvas = getCanvas();
     var context = canvas.getContext('2d');
+    
+    console.log("CANVAS", canvas, context);
+    if (!context) {
+      return;
+    }
     
     // Store the current transformation matrix
     context.save();

@@ -283,6 +283,11 @@ GameEngine.Sprite = GameEngine.Node.extend({
     return true;
   },
   
+  render: function() {
+    GameEngine.spriteRenderer.render(this);
+//    this._renderer.render(this);
+  },
+  
   /* CANVAS METHODS */
   
   

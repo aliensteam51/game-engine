@@ -1,5 +1,5 @@
-GameEngine.Renderer = GameEngine.Object.extend({
-  _className: "GameEngine.Renderer",
+GameEngine.GLRenderer = GameEngine.Object.extend({
+  _className: "GameEngine.GLRenderer",
   _programScripts: [],
   _programKeys: [],
   
