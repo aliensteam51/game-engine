@@ -103,6 +103,8 @@ GameEngine.Node = GameEngine.Object.extend({
   _renderer: null,
   _batchRenderer: null,
   _renderMode: GameEngine.RenderMode.Normal,
+  _yScaleMultiplier: 1.0,
+  _yStartTranslation: 0.0,
   
   /**
    *  @method init
@@ -112,6 +114,11 @@ GameEngine.Node = GameEngine.Object.extend({
    */
   init: function(contentSize) {
     this._super();
+    
+    if (GameEngine.sharedEngine.legacyCanvasMode) {
+      this._yScaleMultiplier = -1.0;
+//      this._yStartTranslation = - contentSize.height;
+    }
     
     // Create basic information storage objects
     this._animationKeys = [];
@@ -261,10 +268,6 @@ GameEngine.Node = GameEngine.Object.extend({
       this.updateMatrix();
     }
     this._update();
-  },
-  
-  _updateContent: function(clipRect) {
-  
   },
   
   setTouchEnabled: function(enabled) {
@@ -913,7 +916,7 @@ GameEngine.Node = GameEngine.Object.extend({
       var scaleMatrix = this._scaleMatrix;
       if (!scaleMatrix) {
         var scale = this._scale;
-        scaleMatrix = makeScale(scale, scale);
+        scaleMatrix = makeScale(scale, scale * this._yScaleMultiplier);
         this._scaleMatrix = scaleMatrix;
       }
       
@@ -931,7 +934,7 @@ GameEngine.Node = GameEngine.Object.extend({
       var translationMatrix = this._translationMatrix;
       if (!translationMatrix) {
         var position = this._position;
-        translationMatrix = makeTranslation(position.x, position.y);
+        translationMatrix = makeTranslation(this._yStartTranslation + position.x, position.y);
         this._translationMatrix = translationMatrix;
       }
       

@@ -57,7 +57,11 @@ GameEngine.Sprite = GameEngine.Node.extend({
     this._texturePadding = {left: sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.w - frame.width - sourceSize.x, top: sourceSize.y};
     this.setContentSize({width: sourceSize.w, height: sourceSize.h});
     
+    this.textureFrame = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
+    
     frame.y = image.height - frame.y - frame.height;
+    
+    
     
     frame.x /= image.width;
     frame.y /= image.height;
@@ -157,31 +161,33 @@ GameEngine.Sprite = GameEngine.Node.extend({
 	
     this.image = image;
     
-    var gl = getGL();
-    
-    var texture = image.texture;
-    if (!texture) {
-      texture = gl.createTexture();
+    if (!GameEngine.sharedEngine.legacyCanvasMode) {
+      var gl = getGL();
       
-      gl.bindTexture(gl.TEXTURE_2D, texture);
+      var texture = image.texture;
+      if (!texture) {
+        texture = gl.createTexture();
+        
+        gl.bindTexture(gl.TEXTURE_2D, texture);
 
-      // Set the parameters so we can render any size image.
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        // Set the parameters so we can render any size image.
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-      // Upload the image into the texture.
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    
-      image.texture = texture;
+        // Upload the image into the texture.
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      
+        image.texture = texture;
+      }
+      else {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+      }
+      
+      this.texture = texture;
     }
-    else {
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-    }
-    
-    this.texture = texture;
   },
   
   _shouldUpdateOverlayColour: false,
@@ -201,81 +207,28 @@ GameEngine.Sprite = GameEngine.Node.extend({
     }
   },
   
-  _updateContent: function(clipRect) {
-//    var gl = getGL();
-//    var program = this.program;
-//    
-//    if (program) {
-//      gl.useProgram(program);
-//      
-//      var contentSize = this.getContentSize();
-//      var xPercent = clipRect.x / contentSize.width;
-//      
-////      if (clipRect.x > 0) {
-////        xPercent = 0.5;
-////      }
-//      
-//      var yPercent = clipRect.y / contentSize.height;
-//      var widthPercent = clipRect.width / contentSize.width;
-//      var heightPercent = clipRect.height / contentSize.height;
-//        
-//      var texCoordBuffer = gl.createBuffer();
-//      var rectangleTextureArray = new Float32Array([
-//        xPercent,  yPercent,
-//        xPercent + widthPercent,  yPercent,
-//        xPercent,  yPercent + heightPercent,
-//        xPercent,  yPercent + heightPercent,
-//        xPercent + widthPercent,  yPercent,
-//        xPercent + widthPercent,  yPercent + heightPercent]
-//      );
-//      
-//      if (clipRect.x > 0) {
-//        console.log("rectangleTextureArray", xPercent, widthPercent, clipRect.x);
-//      }
-//      
-//      gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-//      gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.STATIC_DRAW);
-//      
-//      gl.enableVertexAttribArray(program.texCoordLocation);
-//      gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-//    }
-  },
-  
   frameDictionary: {},
-  startFrameAnimation: function(imagePaths, frameDuration, completion) {
-    var imageCount = imagePaths.length;
-    
-    for (var i = 0; i < imageCount; i ++) {
-      var imagePath = imagePaths[i];
-//    imagePaths.forEach(function(imagePath) {
-      loadImage(imagePath, function(image) {
-        this.frameDictionary[imagePath] = image;
-        
-        imageCount --;
-        if (imageCount === 0) {
-          this._startFrameAnimation(0, imagePaths, frameDuration, completion);
-        }
-      }.bind(this));
-//    }.bind(this));
-    }
+  startFrameAnimation: function(imageNames, frameDuration, loop, completion) {
+    this._startFrameAnimation(0, imageNames, frameDuration, loop, completion);
   },
   
-  _startFrameAnimation: function(index, imagePaths, frameDuration, completion) {
-    if (index >= imagePaths.length) {
-//      if (completion) {
-//        completion();
-//      }
-
-      this._startFrameAnimation(0, imagePaths, frameDuration, completion);
+  _startFrameAnimation: function(index, imageNames, frameDuration, loop, completion) {
+    if (index >= imageNames.length) {
+      if (loop) {
+        this._startFrameAnimation(0, imageNames, frameDuration, loop, completion);
+      }
+      else {
+        if (completion) {
+          completion();
+        }
+      }
       return;
     }
-    
-    this._renderImage = this.frameDictionary[imagePaths[index]];
-    this._scene.dirty = true;
-    this.texture = null;
+      
+    this.setFrameImage(imageNames[index]);
     
     setTimeout(function() {
-      this._startFrameAnimation(index + 1, imagePaths, frameDuration, completion);
+      this._startFrameAnimation(index + 1, imageNames, frameDuration, loop, completion);
     }.bind(this), frameDuration * 1000.0);
   },
   
@@ -285,48 +238,6 @@ GameEngine.Sprite = GameEngine.Node.extend({
   
   render: function() {
     GameEngine.spriteRenderer.render(this);
-//    this._renderer.render(this);
-  },
-  
-  /* CANVAS METHODS */
-  
-  
-  renderForCanvas: function() {
-    console.log("RENDER FOR CANVAS");
-  
-    var image = this._renderImage;
-    if (!image || !this._loaded)		{
-      return;
-    }
-	
-    var canvas = getCanvas();
-    var context = canvas.getContext('2d');
-    
-    var position = this.getPosition();
-    var contentSize = this.getContentSize();
-    var scale = this._scale;
-    var anchorPoint = this._anchorPoint;
-    
-    contentSize.width *= scale;
-    contentSize.height *= scale;
-    
-    // Flip the position, jay
-    position.y = 768.0 - position.y;
-    
-    var angleInRadians = this._rotation * Math.PI / 180;
-    
-    // Store the current transformation matrix
-    context.save();
-    
-    context.translate(position.x, position.y);
-    context.rotate(angleInRadians);
-    context.globalAlpha = this._alpha;
-    context.drawImage(image, - contentSize.width * anchorPoint.x, - contentSize.height * anchorPoint.y, contentSize.width, contentSize.height);
-    context.rotate(- angleInRadians);
-    context.translate(- position.x, - position.y);
-    
-    // Restore the transform
-    context.restore();
   },
   
 });

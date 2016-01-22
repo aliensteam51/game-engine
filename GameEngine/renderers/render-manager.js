@@ -43,6 +43,10 @@ GameEngine.RenderManager = GameEngine.Object.extend({
     
     GameEngine.renderers = [GameEngine.nodeRenderer, GameEngine.spriteRenderer, 
                             GameEngine.colourNodeRenderer];
+                            
+    if (completion) {
+      completion();
+    }
   },
   
   loadPrograms: function(completion) {
@@ -99,7 +103,40 @@ GameEngine.RenderManager = GameEngine.Object.extend({
   },
   
   renderCanvas: function(scenes) {
+    var canvas = getCanvas();
+    var context = canvas.getContext('2d');
     
+    // Store the current transformation matrix
+    context.save();
+
+    // Use the identity matrix while clearing the canvas
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Restore the transform
+    context.restore();
+    
+    for (var x = 0; x < scenes.length; x ++) {
+      var scene = scenes[x];
+//      var backgroundColor = scene.backgroundColor;
+      context.fillStyle = "rgba(0.0, 0.0, 0.0, 0.0)";
+      //"rgba(" + backgroundColor.r * 255.0 + ", " + backgroundColor.g * 255.0 + ", " + backgroundColor.b * 255.0 + ", " + backgroundColor.a + ")";
+      context.fillRect(0.0, 0.0, canvas.width, canvas.height);
+      
+      var children = scene._getRenderList();
+      for (var i = 0; i < children.length; i ++) {
+        var child = children[i];
+        if (child instanceof Array) {
+          for (y = 0; y < child.length; y ++) {
+            var subChild = child[y];
+            subChild.render();
+          }
+        }
+        else {
+          child.render();
+        }
+      }
+    }
   },
 });
 GameEngine.sharedRenderManager = new GameEngine.RenderManager();

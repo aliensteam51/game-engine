@@ -17,7 +17,6 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
   },
   
   start: function(completion) {
-    this.setup();
     this.startEvents();
     
     GameEngine.sharedRenderManager.setup(function() {
@@ -34,6 +33,11 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
       console.log("GameEngine.SharedEngine - presentScene: Scene is not a (subclass of) GameEngine.Scene");
       return;
     }
+    
+    if (this.legacyCanvasMode && GameEngine.Transition.Cube) {
+      transition = GameEngine.Transition.None;
+    }
+    
     
     var otherScenes = this.otherScenes;
     var previousScene = this.currentScene;
@@ -113,7 +117,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
           }
         }
         else {
-          scene.setPosition({x: 0.0, y: 0.0});
+//          scene.setPosition({x: 0.0, y: 0.0});
           scene.onEnter();
           
           if (previousScene) {
@@ -251,219 +255,16 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
     
     
   },
-
-  setup: function() {
-    if (!this.legacyCanvasMode) {
-      this.setupGL();
-    }
-  },
-
-  setupGL: function() {
-    var gl = getGL();
-//    gl.enable(gl.DEPTH_TEST);                               // Enable depth testing
-//    gl.depthFunc(gl.ALWAYS);                                // Near things obscure far things
-//      gl.depthFunc(gl.NEVER);
-      
-      //TMP
-      this.indexBuffer = gl.createBuffer();
-      this.dynamicBuffer = gl.createBuffer();
-  },
   
   render: function() {
     var currentScene = this.currentScene;
     if (currentScene && currentScene.dirty) {
       currentScene.dirty = false;
       
-      if (this.legacyCanvasMode) {
-        this.renderCanvas();
-      }
-      else {
-        var renderScenes = this.otherScenes.slice();
-        renderScenes.push(currentScene);
-        
-        GameEngine.sharedRenderManager.render(renderScenes);
-      }
-    }
-  },
-
-  renderGL: function() {
-    var gl = getGL();
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);      // Clear the color as well as the depth buffer.
-    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-  
-    var currentScene = this.currentScene;
-    if (currentScene) {
-      var children = currentScene._getRenderList();
-      for (var i = 0; i < children.length; i ++) {
-        var node = children[i];
-//      children.forEach(function(node) {
-        if (node instanceof Array) {
-        
-        }
-        else {
-          node.render();
-          node.draw();
-        }
-//      });
-      }
-    }
-    
-    var otherScenes = this.otherScenes;
-    for (var i = 0; i < otherScenes.length; i ++) {
-      var scene = otherScenes[i];
-//    this.otherScenes.forEach(function(scene) {
-      var children = scene._getRenderList();
-      for (var i = 0; i < children.length; i ++) {
-        var node = children[i];
-//      children.forEach(function(node) {
-        if (node instanceof Array) {
-        
-        }
-        else {
-          node.render();
-          node.draw();
-        }
-//      });
-      }
-//    });
-    }
-  
-    gl.flush();
-  },
-  
-  // Buffer Render
-//  renderGL: function() {
-//    var gl = getGL();
-//    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);      // Clear the color as well as the depth buffer.
-//    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-//  
-//    var currentScene = this.currentScene;
-//    if (currentScene) {
-//      var backgroundColor = currentScene.backgroundColor;
-//      gl.clearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
-//      
-//      var firstSprite = currentScene.children[0];
-//      firstSprite.clara(currentScene.children.length);
-//      
-//      if (!firstSprite.program) {
-//        return;
-//      }
-//      
-//      var dynamicData = new Float32Array(currentScene.children.length * 8);
-//      var rectangleArray = new Float32Array(currentScene.children.length * 12);
-//      for (var i = 0; i < currentScene.children.length; i ++) {
-//        var sprite = currentScene.children[i];
-//        var index = i + i * 7;
-//        
-//        var position = sprite._position;
-//        dynamicData[index] = position.x;
-//        dynamicData[index + 1] = position.y;
-//        
-//        dynamicData[index + 2] = position.x;
-//        dynamicData[index + 3] = position.y;
-//        
-//        dynamicData[index + 4] = position.x;
-//        dynamicData[index + 5] = position.y;
-//        
-//        dynamicData[index + 6] = position.x;
-//        dynamicData[index + 7] = position.y;
-//        
-//        
-//        var contentSize = sprite._contentSize;
-//        
-//        var index2 = i + i * 11;
-//        rectangleArray[index2] = 0.0;
-//        rectangleArray[index2 + 1] = contentSize.width;
-//        rectangleArray[index2 + 2] = 0.0;
-//        
-//        rectangleArray[index2 + 3] = contentSize.width;
-//        rectangleArray[index2 + 4] = contentSize.height;
-//        rectangleArray[index2 + 5] = 0.0;
-//        
-//        rectangleArray[index2 + 6] = 0.0;
-//        rectangleArray[index2 + 7] = 0.0;
-//        rectangleArray[index2 + 8] = 0.0;
-//        
-//        rectangleArray[index2 + 9] = contentSize.width;
-//        rectangleArray[index2 + 10] = 0.0;
-//        rectangleArray[index2 + 11] = 0.0;
-//      }
-//      
-//      gl.bindBuffer(gl.ARRAY_BUFFER, this.dynamicBuffer);
-//      gl.bufferData(gl.ARRAY_BUFFER, dynamicData, gl.STATIC_DRAW);
-//      gl.enableVertexAttribArray(firstSprite.program.translationLocation);
-//      gl.vertexAttribPointer(firstSprite.program.translationLocation, 2, gl.FLOAT, false, 0, 0);
-//
-//      // Create a buffer and put a single clipspace rectangle in it (2 triangles)
-//      gl.bindBuffer(gl.ARRAY_BUFFER, firstSprite.program.buffer);
-//      
-//      // setup the rectangle
-//      gl.bufferData(gl.ARRAY_BUFFER, rectangleArray, gl.STATIC_DRAW);
-//      gl.enableVertexAttribArray(firstSprite.program.positionLocation);
-//      gl.vertexAttribPointer(firstSprite.program.positionLocation, 3, gl.FLOAT, false, 0, 0);
-//      
-//      var indices = new Uint16Array(98304);
-//      for (var i=0, j=0; i < currentScene.children.length * 6; i += 6, j += 4)
-//      {
-//          indices[i + 0] = j + 0;
-//          indices[i + 1] = j + 2;
-//          indices[i + 2] = j + 3;
-//          indices[i + 3] = j + 0;
-//          indices[i + 4] = j + 3;
-//          indices[i + 5] = j + 1;
-//      }
-//      
-//      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-//      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-//      
-//      gl.drawElements(gl.TRIANGLES, currentScene.children.length * 6, gl.UNSIGNED_SHORT, 0);
-//      
-////      // Sort opaque, not opaque
-////      var children = currentScene.children;
-////      var sortedChildren = children.sort(function(node1, node2) {
-////        return  node1.zIndex - node2.zIndex;
-////      });
-////      sortedChildren.forEach(function(node) {
-////        node.render();
-////        node.draw();
-////      });
-//    }
-//  
-//    gl.flush();
-//  },
-
-  renderCanvas: function() {
-    var canvas = getCanvas();
-    var context = canvas.getContext('2d');
-    
-    console.log("CANVAS", canvas, context);
-    if (!context) {
-      return;
-    }
-    
-    // Store the current transformation matrix
-    context.save();
-
-    // Use the identity matrix while clearing the canvas
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Restore the transform
-    context.restore();
-    
-    var currentScene = this.currentScene;
-    if (currentScene) {
-      var backgroundColor = currentScene.backgroundColor;
-      context.fillStyle = "rgba(" + backgroundColor.r * 255.0 + ", " + backgroundColor.g * 255.0 + ", " + backgroundColor.b * 255.0 + ", " + backgroundColor.a + ")";
-      context.fillRect(0.0, 0.0, canvas.width, canvas.height);
+      var renderScenes = this.otherScenes.slice();
+      renderScenes.push(currentScene);
       
-      var allChildren = currentScene.allChildren;
-      for (var i = 0; i < allChildren.length; i ++) {
-        var node = allChildren[i];
-//      currentScene.allChildren().forEach(function(node) {
-        node.renderForCanvas();
-//      });
-      }
+      GameEngine.sharedRenderManager.render(renderScenes);
     }
   },
   

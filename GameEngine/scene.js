@@ -8,9 +8,10 @@ GameEngine.Scene = GameEngine.Node.extend({
   dirty: true,
   
   init: function(contentSize) {
-    this._anchorPoint = {x: 0.0, y: 0.0};
-  
     this._super(contentSize);
+    
+    this._anchorPoint = {x: 0.5, y: 0.5};
+    this.setPosition({x: contentSize.width / 2.0, y: contentSize.height / 2.0});
     
     var gameEngine = GameEngine.sharedEngine;
     gameEngine.addScheduledActionWithKey(function() {

@@ -1,3 +1,3 @@
-GameEngine.CanvasRenderer = GameEngine.Object.extend({
+GameEngine.CanvasRenderer = GameEngine.Renderer.extend({
   
 });

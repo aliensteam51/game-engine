@@ -1,4 +1,4 @@
-GameEngine.GLRenderer = GameEngine.Object.extend({
+GameEngine.GLRenderer = GameEngine.Renderer.extend({
   _className: "GameEngine.GLRenderer",
   _programScripts: [],
   _programKeys: [],
