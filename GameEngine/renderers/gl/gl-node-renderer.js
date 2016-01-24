@@ -84,11 +84,20 @@ GameEngine.GLNodeRenderer = GameEngine.GLRenderer.extend({
         }
       }
       else {
-        gl.uniform2f(program.translationLocation, node._translation_t[0]);
-        gl.uniform2f(program.rotationLocation, node._rotation_t);
-        gl.uniform2f(program.scaleLocation, node._scale_t);
-        gl.uniform2f(program.sizeLocation, node._contentSize_t);
-        gl.uniform2f(program.anchorpointLocation, node._anchorPoint_t);
+        var translation = node._translation_t;
+        gl.uniform2f(program.translationLocation, translation[0], translation[1]);
+        
+        var rotation = node._rotation_t;
+        gl.uniform2f(program.rotationLocation, rotation[0], rotation[1]);
+        
+        var scale = node._scale_t;
+        gl.uniform2f(program.scaleLocation, scale[0], scale[1]);
+        
+        var contentSize = node._contentSize_t;
+        gl.uniform2f(program.sizeLocation, contentSize[0], contentSize[1]);
+        
+        var anchorPoint = node._anchorPoint_t;
+        gl.uniform2f(program.anchorpointLocation, anchorPoint[0], anchorPoint[1]);
       }
       
       gl.drawArrays(gl.TRIANGLES, 0, 6);

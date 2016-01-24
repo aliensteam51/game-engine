@@ -471,7 +471,7 @@ GameEngine.Node = GameEngine.Object.extend({
     }
     
     var shaderRotation = [];
-    var angleInRadians = rotation.z * Math.PI / 180;
+    var angleInRadians = this._rotation.z * Math.PI / 180;
     shaderRotation[0] = Math.sin(angleInRadians);
     shaderRotation[1] = Math.cos(angleInRadians);
     this._rotation_t = shaderRotation;
