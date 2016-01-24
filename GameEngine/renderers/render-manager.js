@@ -85,7 +85,7 @@ GameEngine.RenderManager = GameEngine.Object.extend({
       var scene = scenes[y];
       if (scene) {
         var children = scene._getRenderList();
-       
+        
         for (var i = 0; i < children.length; i ++) {
           var child = children[i];
           if (child instanceof Array) {

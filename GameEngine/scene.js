@@ -11,11 +11,11 @@ GameEngine.Scene = GameEngine.Node.extend({
     this._super(contentSize);
     
     this._anchorPoint = {x: 0.5, y: 0.5};
-    this.setPosition({x: contentSize.width / 2.0, y: contentSize.height / 2.0});
+    this._setPosition(contentSize.width / 2.0, contentSize.height / 2.0, 0.0);
     
     var gameEngine = GameEngine.sharedEngine;
-    gameEngine.addScheduledActionWithKey(function() {
-      this.update();
+    gameEngine.addScheduledActionWithKey(function(delta) {
+      this.update(delta);
     }.bind(this), this._id + "_update");
   },
   

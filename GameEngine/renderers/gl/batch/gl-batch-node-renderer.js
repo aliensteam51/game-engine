@@ -189,7 +189,8 @@ GameEngine.GLBatchNodeRenderer = GameEngine.GLRenderer.extend({
       for (var y = 0; y < nodes.length; y ++) {
         var node = nodes[y];
         
-        var contentSize = node._contentSize;
+        var width = node._width;
+        var height = node._height;
         var texturePadding = node._texturePadding;
         var left = texturePadding.left;
         var bottom = texturePadding.bottom;
@@ -197,19 +198,19 @@ GameEngine.GLBatchNodeRenderer = GameEngine.GLRenderer.extend({
         var top = texturePadding.top;
         
         rectangleArray[index + 0] = left;
-        rectangleArray[index + 1] = contentSize.height - top;
+        rectangleArray[index + 1] = height - top;
         rectangleArray[index + 2] = 0.0;
         
         rectangleArray[index + 3] = left;
         rectangleArray[index + 4] = bottom;
         rectangleArray[index + 5] = 0.0
         
-        rectangleArray[index + 6] = contentSize.width - right;
+        rectangleArray[index + 6] = width - right;
         rectangleArray[index + 7] = bottom;
         rectangleArray[index + 8] = 0.0
         
-        rectangleArray[index + 9] = contentSize.width - right;
-        rectangleArray[index + 10] = contentSize.height - top;
+        rectangleArray[index + 9] = width - right;
+        rectangleArray[index + 10] = height - top;
         rectangleArray[index + 11] = 0.0
         
         index += 12;

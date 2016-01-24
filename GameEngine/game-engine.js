@@ -78,7 +78,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
         if (previousScene && transition === GameEngine.Transition.Cube) {
           var contentSize = previousScene.getContentSize();
           previousScene.setAnchorPoint({x: 1.0, y: 0.0});
-          previousScene.setPosition({x: 1024.0, y: 0.0});
+          previousScene._setPosition(1024.0, 0.0, 0.0);
           previousScene.rotateTo(1.0, {x: 0.0, y: -90.0, z: 0.0});
           previousScene.moveTo(1.0, {x: 0.0, y: 0.0});
         }
@@ -87,7 +87,7 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
         scene.dirty = true;
 //        scene.onEnter();
         if (previousScene && transition === GameEngine.Transition.Cube) {
-          scene.setPosition({x: 1024.0, y: 0.0});
+          scene._setPosition(1024.0, 0.0, 0.0);
           scene.setRotation({x: 0.0, y: -90.0, z: 0.0});
           scene.rotateTo(1.0, {x: 0.0, y: 0.0, z: 0.0});
           scene.moveTo(1.0, {x: 0.0, y: 0.0});
@@ -174,12 +174,13 @@ GameEngine.SharedEngine = GameEngine.Object.extend({
           }
 
           var position = node.positionInScene();
-          var contentSize = node._contentSize;
+          var width = this._width;
+          var height = this._height;
           var anchorPoint = node._anchorPoint;
-          position.x -= contentSize.width * anchorPoint.x;
-          position.y -= contentSize.height * anchorPoint.y;
+          position.x -= width * anchorPoint.x;
+          position.y -= height * anchorPoint.y;
           
-          var rect = {x: position.x, y: position.y, width: contentSize.width, height: contentSize.height};
+          var rect = {x: position.x, y: position.y, width: width, height: height};
           var inside = rectContainsPoint(rect, getEventPosition(event));
           if (inside) {
             if (node.onTouchBegan(event)) {
@@ -341,7 +342,7 @@ function doDrawLoop() {
   if (delta > interval) {
     then = now - (delta % interval);
     var gameEngine = GameEngine.sharedEngine;
-    gameEngine.performScheduledActions();
+    gameEngine.performScheduledActions(delta);
     gameEngine.render();
   }
 }
@@ -359,11 +360,12 @@ function testDraw() {
 
 function isEventInsideNode(event, node) {
   var position = node.getPosition();
-  var contentSize = node._contentSize;
+  var width = node._width;
+  var height = node._height;
   var anchorPoint = node._anchorPoint;
-  position.x -= contentSize.width * anchorPoint.x;
-  position.y -= contentSize.height * anchorPoint.y;
+  position.x -= width * anchorPoint.x;
+  position.y -= height * anchorPoint.y;
   
-  var rect = {x: position.x, y: position.y, width: contentSize.width, height: contentSize.height};
+  var rect = {x: position.x, y: position.y, width: width, height: height};
   return rectContainsPoint(rect, getEventPosition(event));
 }

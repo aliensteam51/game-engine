@@ -113,12 +113,20 @@ function createBuffer(arraySize, elemSize, bufferItemLength, gl) {
   return buffer;
 }
 
-function makeTranslation(tx, ty) {
-  return [
-    1, 0, 0,
-    0, 1, 0,
-    tx, ty, 1
-  ];
+function makeTranslation(tx, ty, out) {
+  out[0] = 1;
+  out[1] = 0;
+  out[2] = 0;
+  
+  out[3] = 0;
+  out[4] = 1;
+  out[5] = 0;
+  
+  out[6] = tx;
+  out[7] = ty;
+  out[8] = 1;
+  
+  return out;
 }
 
 function make3DTranslation(tx, ty, tz) {
@@ -130,14 +138,23 @@ function make3DTranslation(tx, ty, tz) {
   ];
 }
 
-function makeRotation(angleInRadians) {
+function makeRotation(angleInRadians, out) {
   var c = Math.cos(angleInRadians);
   var s = Math.sin(angleInRadians);
-  return [
-    c,-s, 0,
-    s, c, 0,
-    0, 0, 1
-  ];
+  
+  out[0] = c;
+  out[1] = -s;
+  out[2] = 0;
+  
+  out[3] = s;
+  out[4] = c;
+  out[5] = 0;
+  
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 1;
+  
+  return out;
 }
 
 function make3DRotationX(angleInRadians) {
@@ -174,12 +191,20 @@ function make3DRotationZ(angleInRadians) {
   ];
 }
 
-function makeScale(sx, sy) {
-  return [
-    sx, 0, 0,
-    0, sy, 0,
-    0, 0, 1
-  ];
+function makeScale(sx, sy, out) {
+  out[0] = sx;
+  out[1] = 0;
+  out[2] = 0;
+  
+  out[3] = 0;
+  out[4] = sy;
+  out[5] = 0;
+  
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 1;
+
+  return out;
 }
 
 function make3DScale(sx, sy, sz) {
@@ -191,7 +216,7 @@ function make3DScale(sx, sy, sz) {
   ];
 }
 
-function matrixMultiply(a, b) {
+function matrixMultiply(a, b, out) {
   var a00 = a[0*3+0];
   var a01 = a[0*3+1];
   var a02 = a[0*3+2];
@@ -210,15 +235,20 @@ function matrixMultiply(a, b) {
   var b20 = b[2*3+0];
   var b21 = b[2*3+1];
   var b22 = b[2*3+2];
-  return [a00 * b00 + a01 * b10 + a02 * b20,
-          a00 * b01 + a01 * b11 + a02 * b21,
-          a00 * b02 + a01 * b12 + a02 * b22,
-          a10 * b00 + a11 * b10 + a12 * b20,
-          a10 * b01 + a11 * b11 + a12 * b21,
-          a10 * b02 + a11 * b12 + a12 * b22,
-          a20 * b00 + a21 * b10 + a22 * b20,
-          a20 * b01 + a21 * b11 + a22 * b21,
-          a20 * b02 + a21 * b12 + a22 * b22];
+  
+  out[0] = a00 * b00 + a01 * b10 + a02 * b20;
+  out[1] = a00 * b01 + a01 * b11 + a02 * b21;
+  out[2] = a00 * b02 + a01 * b12 + a02 * b22;
+  
+  out[3] = a10 * b00 + a11 * b10 + a12 * b20;
+  out[4] = a10 * b01 + a11 * b11 + a12 * b21;
+  out[5] = a10 * b02 + a11 * b12 + a12 * b22;
+  
+  out[6] = a20 * b00 + a21 * b10 + a22 * b20;
+  out[7] = a20 * b01 + a21 * b11 + a22 * b21;
+  out[8] = a20 * b02 + a21 * b12 + a22 * b22;
+  
+  return out;
 }
 
 function convert2DMatrix(matrix) {
@@ -323,6 +353,30 @@ function matrix3DMultiply(matrix1, matrix2) {
   b30 * a03 + b31 * a13 + b32 * a23 + b33 * a33
   ];
 }
+
+function multiplyPosition(x, y, matrix) {
+  var newPosition = {};
+  newPosition.x = matrix[0] * x + matrix[3] * y + matrix[6] * 1.0;
+  newPosition.y = matrix[1] * x + matrix[4] * y + matrix[7] * 1.0;
+  return newPosition;
+}
+
+function multiplyPosition3D(x, y, z, matrix) {
+  var newPosition = {};
+  newPosition.x = matrix[0] * x + matrix[4] * y + matrix[7] * z;
+  newPosition.y = matrix[1] * x + matrix[5] * y + matrix[8] * z;
+  newPosition.z = matrix[2] * x + matrix[6] * y + matrix[9] * z;
+  return newPosition;
+}
+
+/*
+
+[ m11 m12 m13 m14 ][ x ]   [ m11 * x + m12 * y + m13 * z + m14 * w ]
+[ m21 m22 m23 m24 ][ y ]   [ m21 * x + m22 * y + m23 * z + m24 * w ]
+[ m31 m32 m33 m34 ][ z ] = [ m31 * x + m32 * y + m33 * z + m34 * w ]
+[ m41 m42 m43 m44 ][ w ]   [ m41 * x + m42 * y + m43 * z + m44 * w ]
+
+*/
 
 // Source http://jsperf.com/inverse-matrix-4x4/6
 

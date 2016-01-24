@@ -171,6 +171,13 @@ function rectContainsPoint(rect, point) {
   return point.x >= rect.x && point.x <= rect.x + rect.width && point.y >= rect.y && point.y <= rect.y + rect.height;
 }
 
+function rectInsideRect(rect1, rect2) {
+  return  (rect1.x >= rect2.x && rect1.x <= rect2.x + rect2.width ||
+          rect1.x + rect1.width >= rect2.x && rect1.x + rect1.width <= rect2.x + rect2.width) &&
+          (rect1.y >= rect2.y && rect2.y <= rect2.y + rect2.height ||
+          rect1.y + rect1.height >= rect2.y && rect1.y + rect1.height <= rect2.y + rect2.height);
+}
+
 // Based on: http://www.kirupa.com/html5/getting_mouse_click_position.htm
 function getEventPosition(event) {
   var targetElement = event.currentTarget;

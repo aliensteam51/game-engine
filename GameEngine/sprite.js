@@ -65,7 +65,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
     var frame = {x: inFrame.x, y: inFrame.y, width: inFrame.w, height: inFrame.h};
     var sourceSize = foundFrame["spriteSourceSize"];
     this._texturePadding = {left: sourceSize.w - frame.width - sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.x, top: sourceSize.y};
-    this.setContentSize({width: sourceSize.w, height: sourceSize.h});
+    this._setContentSize(sourceSize.w, sourceSize.h);
     
     var pTextureFrame = this.textureFrame;
     var textureFrame = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
@@ -144,7 +144,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
     }
     
     if (image) {
-      this.setContentSize({width: image.width, height: image.height});
+      this._setContentSize(image.width, image.height);
     }
   
 //    this._super(function() {
@@ -169,7 +169,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
       else {
         console.log("DEBUG - GameEngine.Sprite - Loading image that was not preloaded", image, this.url);
         loadImage(this.url, function(image) {
-          this.setContentSize({width: image.width, height: image.height});
+          this._setContentSize(image.width, image.heigh);
           completionFunction(image);
         }.bind(this));
       }
@@ -237,27 +237,35 @@ GameEngine.Sprite = GameEngine.Node.extend({
   
   frameDictionary: {},
   startFrameAnimation: function(imageNames, frameDuration, loop, completion) {
-    this._startFrameAnimation(0, imageNames, frameDuration, loop, completion);
-  },
-  
-  _startFrameAnimation: function(index, imageNames, frameDuration, loop, completion) {
-    if (index >= imageNames.length) {
-      if (loop) {
-        this._startFrameAnimation(0, imageNames, frameDuration, loop, completion);
-      }
-      else {
-        if (completion) {
-          completion();
-        }
-      }
-      return;
-    }
-      
-    this.setFrameImage(imageNames[index]);
+    var index = 0;
     
-    setTimeout(function() {
-      this._startFrameAnimation(index + 1, imageNames, frameDuration, loop, completion);
-    }.bind(this), frameDuration * 1000.0);
+    var then = Date.now();
+    var interval = frameDuration * 1000.0;
+    
+    var key = "_startFrameAnimation_";
+    
+    var gameEngine = GameEngine.sharedEngine;
+    gameEngine.addScheduledActionWithKey(function(delta) {
+      var now = Date.now();
+      var delta = now - then;
+      
+      if (delta >= interval) {
+        then = now;
+      
+        if (index >= imageNames.length) {
+          if (loop) {
+            index = 0;
+          }
+          else {
+            gameEngine.removeScheduledActionWithKey(key);
+            return;
+          }
+        }
+        
+        this.setFrameImage(imageNames[index]);
+        index ++;
+      }
+    }.bind(this), key + this._id);
   },
   
   _doesDraw: function() {
