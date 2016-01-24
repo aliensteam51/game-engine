@@ -103,6 +103,16 @@ function createProgramFromScripts(gl, vertexShaderId, fragmentShaderId) {
   return createProgram(gl, vertexShader, fragmentShader);
 }
 
+function createBuffer(arraySize, elemSize, bufferItemLength, gl) {
+  var buffer = gl.createBuffer();
+  buffer.arraySize = arraySize;
+  buffer.elemSize = elemSize;
+  var bufferSize = bufferItemLength * 12 * 3;
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bufferSize), gl.DYNAMIC_DRAW);
+  return buffer;
+}
+
 function makeTranslation(tx, ty) {
   return [
     1, 0, 0,

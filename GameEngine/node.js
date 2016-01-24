@@ -102,7 +102,7 @@ GameEngine.Node = GameEngine.Object.extend({
   _global: {},
   _renderer: null,
   _batchRenderer: null,
-  _renderMode: GameEngine.RenderMode.Normal,
+  _renderMode: GameEngine.RenderMode.Simple,
   _yScaleMultiplier: 1.0,
   _yStartTranslation: 0.0,
   
@@ -260,11 +260,14 @@ GameEngine.Node = GameEngine.Object.extend({
    *  @example node.setContentSize({width: 100.0, height: 100.0})
    */
   setContentSize: function(contentSize) {
+    var oldSize = this._contentSize;
+    var sizeChanged = contentSize.width !== oldSize.width && contentSize.height !== oldSize.height;
+  
     this._contentSize = {width: contentSize.width, height: contentSize.height};
     this._contentSize_t = [contentSize.width, contentSize.height];
     
     this.updateRectangleArray();
-    if (this._renderMode === GameEngine.RenderMode.Normal) {
+    if (this._renderMode === GameEngine.RenderMode.Normal && sizeChanged) {
       this.updateMatrix();
     }
     this._update();

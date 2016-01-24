@@ -6,7 +6,12 @@ GameEngine.Sprite = GameEngine.Node.extend({
   _renderImage: null,
   textures: null,
   _loaded: false,
+  
   _overlayColour: {r: 0.0, g: 0.0, b: 0.0, a: 0.0},
+  _overlayColourNeedsUpdate: true,
+  
+  _textureRectangleNeedsUpdate: true,
+  
   _testLoadCallback: null,
   _global: {},
 
@@ -48,6 +53,11 @@ GameEngine.Sprite = GameEngine.Node.extend({
       }
     }
     
+    if (!foundFrame) {
+      console.warn("GameEngine - Sprite - setFrameImage: Could not find frame", frameFileName);
+      return;
+    }
+    
     var imageWidth = image.width;
     var imageHeight = image.height;
     
@@ -57,7 +67,16 @@ GameEngine.Sprite = GameEngine.Node.extend({
     this._texturePadding = {left: sourceSize.w - frame.width - sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.x, top: sourceSize.y};
     this.setContentSize({width: sourceSize.w, height: sourceSize.h});
     
-    this.textureFrame = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
+    var pTextureFrame = this.textureFrame;
+    var textureFrame = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
+    if (pTextureFrame &&
+        pTextureFrame.x !== textureFrame.x &&
+        pTextureFrame.y !== textureFrame.y &&
+        pTextureFrame.width !== textureFrame.width &&
+        pTextureFrame.height !== textureFrame.height) {
+      _textureRectangleNeedsUpdate = true;
+    }
+    this.textureFrame = textureFrame;
     
     frame.y = image.height - frame.y - frame.height;
     
@@ -77,11 +96,20 @@ GameEngine.Sprite = GameEngine.Node.extend({
 //      frame.x + frame.width,  frame.y + frame.height]
 //    );
     
+    this.batchRectangleTextureArray = new Float32Array([
+      frame.x + frame.width,  frame.y + frame.height,
+      frame.x + frame.width,  frame.y,
+      frame.x,                frame.y,
+      frame.x,                frame.y + frame.height
+    ]);
+    
     this.rectangleTextureArray = new Float32Array([
-      frame.x + frame.width, frame.y + frame.height,
-      frame.x + frame.width, frame.y,
-      frame.x, frame.y,
-      frame.x, frame.y + frame.height
+      frame.x,                frame.y,
+      frame.x + frame.width,  frame.y,
+      frame.x,                frame.y + frame.height,
+      frame.x,                frame.y + frame.height,
+      frame.x + frame.width,  frame.y,
+      frame.x + frame.width,  frame.y + frame.height
     ]);
     
     /*

@@ -16,6 +16,8 @@ GameEngine.GLNodeRenderer = GameEngine.GLRenderer.extend({
         program.translationLocation = gl.getUniformLocation(program, "u_translation");
         program.rotationLocation = gl.getUniformLocation(program, "u_rotation");
         program.scaleLocation = gl.getUniformLocation(program, "u_scale");
+        program.anchorpointLocation = gl.getUniformLocation(program, "u_anchorpoint");
+        program.sizeLocation = gl.getUniformLocation(program, "u_size");
       }
       else {
         program.matrixLocation = gl.getUniformLocation(program, "u_matrix");
@@ -72,11 +74,21 @@ GameEngine.GLNodeRenderer = GameEngine.GLRenderer.extend({
       
       gl.uniform1f(program.alphaLocation, node._alpha);
       
-      if (node._shouldRender3D) {
-        gl.uniformMatrix4fv(program.matrixLocation, false, node._matrix);
+      var renderMode = node._renderMode;
+      if (renderMode === GameEngine.RenderMode.Normal) {
+        if (node._shouldRender3D) {
+          gl.uniformMatrix4fv(program.matrixLocation, false, node._matrix);
+        }
+        else {
+          gl.uniformMatrix3fv(program.matrixLocation, false, node._matrix);
+        }
       }
       else {
-        gl.uniformMatrix3fv(program.matrixLocation, false, node._matrix);
+        gl.uniform2f(program.translationLocation, node._translation_t[0]);
+        gl.uniform2f(program.rotationLocation, node._rotation_t);
+        gl.uniform2f(program.scaleLocation, node._scale_t);
+        gl.uniform2f(program.sizeLocation, node._contentSize_t);
+        gl.uniform2f(program.anchorpointLocation, node._anchorPoint_t);
       }
       
       gl.drawArrays(gl.TRIANGLES, 0, 6);

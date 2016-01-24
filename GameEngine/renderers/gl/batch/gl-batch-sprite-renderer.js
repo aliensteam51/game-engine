@@ -10,16 +10,16 @@ GameEngine.GLBatchSpriteRenderer = GameEngine.GLBatchNodeRenderer.extend({
     var programKeys = this._programKeys;
     for (var i = 0; i < programKeys.length; i ++) {
       var programKey = programKeys[i];
-//    this._programKeys.forEach(function(programKey) {
       var program = this[programKey];
       gl.useProgram(program);
+      
+      var bufferItemLength = 1000;
       
       program.texCoordLocation = gl.getAttribLocation(program, "a_texCoord");
       program.overlayColourLocation = gl.getAttribLocation(program, "aOverlayColour");
       
-      program.texCoordBuffer = gl.createBuffer();
-      program.overlayColourBuffer = gl.createBuffer();
-//    }.bind(this));
+      program.texCoordBuffer = createBuffer(4, 2, bufferItemLength, gl);
+      program.overlayColourBuffer = createBuffer(4, 4, bufferItemLength, gl);
     }
   },
   
@@ -31,24 +31,19 @@ GameEngine.GLBatchSpriteRenderer = GameEngine.GLBatchNodeRenderer.extend({
     var gl = getGL();
     var shouldRender3D = sprite._shouldRender3D;
     var renderMode = sprites[0]._renderMode;
-      
-      // = node._shouldRender3D;
+    
     var program = this[this._programKeys[renderMode]];
-    //shouldRender3D ? this.program3D : this.program;
     gl.useProgram(program);
     
+    // Bind the texture
     gl.bindTexture(gl.TEXTURE_2D, sprites[0].texture);
     
-//    var rectangleTextureArray = this.rectangleTextureArray;
-//    if (!rectangleTextureArray) {
-    // TEXTURE COORDS
-      
-//      if (!rectangleTextureArray) {
+    // Create a rectangle array
       var rectangleTextureArray = new Float32Array(sprites.length * 8);
       for (var i = 0; i < sprites.length; i ++) {
         var index = i * 8;
         var sprite = sprites[i];
-        var spriteRectangleTextureArray = sprite.rectangleTextureArray;
+        var spriteRectangleTextureArray = sprite.batchRectangleTextureArray;
         
         rectangleTextureArray[index + 0] = spriteRectangleTextureArray ? spriteRectangleTextureArray[0] : 1.0;
         rectangleTextureArray[index + 1] = spriteRectangleTextureArray ? spriteRectangleTextureArray[1] : 1.0;
@@ -61,47 +56,41 @@ GameEngine.GLBatchSpriteRenderer = GameEngine.GLBatchNodeRenderer.extend({
         
         rectangleTextureArray[index + 6] = spriteRectangleTextureArray ? spriteRectangleTextureArray[6] : 0.0;
         rectangleTextureArray[index + 7] = spriteRectangleTextureArray ? spriteRectangleTextureArray[7] : 1.0;
-        ;
       }
-//      }
-//      this.rectangleTextureArray = rectangleTextureArray;
-//    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, program.texCoordBuffer);
     
-    var textCoordCreated = this._textCoordCreated;
-    if (!textCoordCreated) {
-      gl.bufferData(gl.ARRAY_BUFFER, rectangleTextureArray, gl.DYNAMIC_DRAW);
-    }
-    else {
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, rectangleTextureArray);
-    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, program.texCoordBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, rectangleTextureArray);
     
     gl.enableVertexAttribArray(program.texCoordLocation);
     gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-//    }
     
     // OVERLAY COLOUR
-//    var overlayColourArray = new Float32Array(sprites.length * 4 * 6);
-//    sprites.forEach(function(sprite) {
-//      var overlayColour = sprite._overlayColour;
-//      if (!overlayColour) {
-//        overlayColour = {r: 0.0, g: 0.0, b: 0.0, a: 0.0};
-//      }
-//      
-//      for (var i = 0; i < 6; i ++) {
-//        var index = i + i * 4;
-//        overlayColourArray[index] = overlayColour.r;
-//        overlayColourArray[index + 1] = overlayColour.g;
-//        overlayColourArray[index + 2] = overlayColour.b;
-//        overlayColourArray[index + 3] = overlayColour.a;
-//      }
-//    });
-//    
-//    var overlayColourLocation = program.overlayColourLocation;
-//    gl.bindBuffer(gl.ARRAY_BUFFER, program.overlayColourBuffer);
-//    gl.bufferData(gl.ARRAY_BUFFER, overlayColourArray, gl.STATIC_DRAW);
-//    gl.enableVertexAttribArray(overlayColourLocation);
-//    gl.vertexAttribPointer(overlayColourLocation, 4, gl.FLOAT, false, 0, 0);
+    var overlayColourBuffer = program.overlayColourBuffer;
+    var overlayArraySize = overlayColourBuffer.arraySize;
+    var overlayElemSize = overlayColourBuffer.elemSize;
+    var overlayColourArray = new Float32Array(sprites.length * overlayArraySize * overlayElemSize);
+    for (var x = 0; x < sprites.length; x ++) {
+      var sprite = sprites[x];
+      var overlayColour = sprite._overlayColour;
+      if (!overlayColour) {
+        overlayColour = {r: 0.0, g: 0.0, b: 0.0, a: 0.0};
+      }
+      
+      for (var i = 0; i < overlayArraySize; i ++) {
+        var index = i * overlayElemSize;
+        overlayColourArray[index] = overlayColour.r;
+        overlayColourArray[index + 1] = overlayColour.g;
+        overlayColourArray[index + 2] = overlayColour.b;
+        overlayColourArray[index + 3] = overlayColour.a;
+      }
+    }
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, overlayColourBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, overlayColourArray);
+    
+    var overlayColourLocation = program.overlayColourLocation;
+    gl.enableVertexAttribArray(overlayColourLocation);
+    gl.vertexAttribPointer(overlayColourLocation, 4, gl.FLOAT, false, 0, 0);
     
     this._super(sprites);
   }
