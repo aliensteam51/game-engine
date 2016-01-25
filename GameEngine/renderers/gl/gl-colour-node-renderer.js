@@ -26,8 +26,8 @@ GameEngine.GLColourNodeRenderer = GameEngine.GLNodeRenderer.extend({
     gl.useProgram(program);
     
     // Setup the colour
-    var color = colourNode.color;
-    gl.uniform4f(program.colorLocation, color.r, color.g, color.b, color.a);
+    var colour = colourNode._colour;
+    gl.uniform4f(program.colorLocation, colour.r, colour.g, colour.b, colour.a);
     
     this._super(colourNode);
   }

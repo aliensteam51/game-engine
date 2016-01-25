@@ -105,12 +105,24 @@ function createProgramFromScripts(gl, vertexShaderId, fragmentShaderId) {
 
 function createBuffer(arraySize, elemSize, bufferItemLength, gl) {
   var buffer = gl.createBuffer();
+  
+  var bufferSize = bufferItemLength * 12 * 3;
+  var bufferArray = new Float32Array(bufferSize);
+  
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, bufferArray, gl.DYNAMIC_DRAW);
+  
   buffer.arraySize = arraySize;
   buffer.elemSize = elemSize;
-  var bufferSize = bufferItemLength * 12 * 3;
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bufferSize), gl.DYNAMIC_DRAW);
+  buffer.array = bufferArray;
+  
   return buffer;
+}
+
+function updateBufferArray(propertyKey, index, node, location, buffer, propertyLength, arraySize) {
+  alpha
+  
+  return index;
 }
 
 function makeTranslation(tx, ty, out) {
@@ -127,6 +139,11 @@ function makeTranslation(tx, ty, out) {
   out[8] = 1;
   
   return out;
+}
+
+function updateTranslation(tx, ty, out) {
+  out[6] = tx;
+  out[7] = ty;
 }
 
 function make3DTranslation(tx, ty, tz) {
@@ -155,6 +172,17 @@ function makeRotation(angleInRadians, out) {
   out[8] = 1;
   
   return out;
+}
+
+function updateRotation(angleInRadians, out) {
+  var c = Math.cos(angleInRadians);
+  var s = Math.sin(angleInRadians);
+  
+  out[0] = c;
+  out[1] = -s;
+  
+  out[3] = s;
+  out[4] = c;
 }
 
 function make3DRotationX(angleInRadians) {
@@ -207,6 +235,11 @@ function makeScale(sx, sy, out) {
   return out;
 }
 
+function updateScale(sx, sy, out) {
+  out[0] = sx;
+  out[4] = sy;
+}
+
 function make3DScale(sx, sy, sz) {
   return [
     sx, 0,  0,  0,
@@ -217,24 +250,31 @@ function make3DScale(sx, sy, sz) {
 }
 
 function matrixMultiply(a, b, out) {
-  var a00 = a[0*3+0];
-  var a01 = a[0*3+1];
-  var a02 = a[0*3+2];
-  var a10 = a[1*3+0];
-  var a11 = a[1*3+1];
-  var a12 = a[1*3+2];
-  var a20 = a[2*3+0];
-  var a21 = a[2*3+1];
-  var a22 = a[2*3+2];
-  var b00 = b[0*3+0];
-  var b01 = b[0*3+1];
-  var b02 = b[0*3+2];
-  var b10 = b[1*3+0];
-  var b11 = b[1*3+1];
-  var b12 = b[1*3+2];
-  var b20 = b[2*3+0];
-  var b21 = b[2*3+1];
-  var b22 = b[2*3+2];
+  // Matrix 1
+  var a00 = a[0];
+  var a01 = a[1];
+  var a02 = a[2];
+  
+  var a10 = a[3];
+  var a11 = a[4];
+  var a12 = a[5];
+  
+  var a20 = a[6];
+  var a21 = a[7];
+  var a22 = a[8];
+  
+  // Matrix 2
+  var b00 = b[0];
+  var b01 = b[1];
+  var b02 = b[2];
+  
+  var b10 = b[3];
+  var b11 = b[4];
+  var b12 = b[5];
+  
+  var b20 = b[6];
+  var b21 = b[7];
+  var b22 = b[8];
   
   out[0] = a00 * b00 + a01 * b10 + a02 * b20;
   out[1] = a00 * b01 + a01 * b11 + a02 * b21;
@@ -247,6 +287,121 @@ function matrixMultiply(a, b, out) {
   out[6] = a20 * b00 + a21 * b10 + a22 * b20;
   out[7] = a20 * b01 + a21 * b11 + a22 * b21;
   out[8] = a20 * b02 + a21 * b12 + a22 * b22;
+  
+  return out;
+}
+
+function simpleMatrixMultiply(a, b, out) {
+  // Matrix 1
+  var a00 = a[0];
+  var a01 = a[1];
+  var a02 = a[2];
+  
+  var a10 = a[3];
+  var a11 = a[4];
+  var a12 = a[5];
+  
+  var a20 = a[6];
+  var a21 = a[7];
+  var a22 = a[8];
+  
+  // Matrix 2
+  var b00 = b[0];
+  var b01 = b[1];
+  
+  var b10 = b[3];
+  var b11 = b[4];
+  
+  var b20 = b[6];
+  var b21 = b[7];
+  
+  out[0] = a00 * b00 + a01 * b10 + a02 * b20;
+  out[1] = a00 * b01 + a01 * b11 + a02 * b21;
+  
+  out[3] = a10 * b00 + a11 * b10 + a12 * b20;
+  out[4] = a10 * b01 + a11 * b11 + a12 * b21;
+  
+  out[6] = a20 * b00 + a21 * b10 + a22 * b20;
+  out[7] = a20 * b01 + a21 * b11 + a22 * b21;
+  
+  return out;
+}
+
+function multiplyAnchorScaleMatrixWithRotationMatrix(a, b, out) {
+  // Matrix 1
+  var a00 = a[0];
+  var a01 = a[1];
+  
+  var a10 = a[3];
+  var a11 = a[4];
+  
+  var a20 = a[6];
+  var a21 = a[7];
+  
+  // Matrix 2
+  var b20 = b[6];
+  var b21 = b[7];
+  
+  out[0] = a00;
+  out[1] = a01;
+  
+  out[3] = a10;
+  out[4] = a11;
+  
+  out[6] = a20 + b20;
+  out[7] = a21 + b21;
+}
+
+function debugMatrixMultiply(a, b, out) {
+  // Matrix 1
+  var a00 = a[0];
+  var a01 = a[1];
+  var a02 = a[2];
+  
+  var a10 = a[3];
+  var a11 = a[4];
+  var a12 = a[5];
+  
+  var a20 = a[6];
+  var a21 = a[7];
+  var a22 = a[8];
+  
+  // Matrix 2
+  var b00 = b[0];
+  var b01 = b[1];
+  var b02 = b[2];
+  
+  var b10 = b[3];
+  var b11 = b[4];
+  var b12 = b[5];
+  
+  var b20 = b[6];
+  var b21 = b[7];
+  var b22 = b[8];
+  
+  out[0] = a00 * b00 + a01 * b10 + a02 * b20;
+  out[1] = a00 * b01 + a01 * b11 + a02 * b21;
+  out[2] = a00 * b02 + a01 * b12 + a02 * b22;
+  
+  out[3] = a10 * b00 + a11 * b10 + a12 * b20;
+  out[4] = a10 * b01 + a11 * b11 + a12 * b21;
+  out[5] = a10 * b02 + a11 * b12 + a12 * b22;
+  
+  out[6] = a20 * b00 + a21 * b10 + a22 * b20;
+  out[7] = a20 * b01 + a21 * b11 + a22 * b21;
+  out[8] = a20 * b02 + a21 * b12 + a22 * b22;
+  
+  console.log("1: " + a00 + " * " + b00 + " + " + a01 + " * " + b10 + " + " + a02 + " * " + b20 + " = " + out[0]);
+  console.log("2: " + a00 + " * " + b01 + " + " + a01 + " * " + b11 + " + " + a02 + " * " + b21 + " = " + out[1]);
+  console.log("3: " + a00 + " * " + b02 + " + " + a01 + " * " + b12 + " + " + a02 + " * " + b22 + " = " + out[2]);
+  
+  console.log("4: " + a10 + " * " + b00 + " + " + a11 + " * " + b10 + " + " + a12 + " * " + b20 + " = " + out[3]);
+  console.log("5: " + a10 + " * " + b01 + " + " + a11 + " * " + b11 + " + " + a12 + " * " + b21 + " = " + out[4]);
+  console.log("6: " + a10 + " * " + b02 + " + " + a11 + " * " + b12 + " + " + a12 + " * " + b22 + " = " + out[5]);
+  
+  console.log("7: " + a20 + " * " + b00 + " + " + a21 + " * " + b10 + " + " + a22 + " * " + b20 + " = " + out[6]);
+  console.log("8: " + a20 + " * " + b01 + " + " + a21 + " * " + b11 + " + " + a22 + " * " + b21 + " = " + out[7]);
+  console.log("9: " + a20 + " * " + b02 + " + " + a21 + " * " + b12 + " + " + a22 + " * " + b22 + " = " + out[8]);
   
   return out;
 }

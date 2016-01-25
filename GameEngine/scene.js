@@ -6,6 +6,7 @@ GameEngine.Scene = GameEngine.Node.extend({
    *  @description If the sprite should redraw or not 
    */
   dirty: true,
+  _isScene: true,
   
   init: function(contentSize) {
     this._super(contentSize);
@@ -46,7 +47,6 @@ GameEngine.Scene = GameEngine.Node.extend({
   addChild: function(child) {
     this._super(child);
     child._setScene(this);
-    this._renderList = null;
     this._update();
   },
   

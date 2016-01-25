@@ -108,7 +108,7 @@ GameEngine.Node = GameEngine.Object.extend({
   _global: {},
   _renderer: null,
   _batchRenderer: null,
-  _renderMode: GameEngine.RenderMode.Normal ,
+  _renderMode: GameEngine.RenderMode.Normal,
   _yScaleMultiplier: 1.0,
   _yStartTranslation: 0.0,
   _isVisible: false,
@@ -122,6 +122,8 @@ GameEngine.Node = GameEngine.Object.extend({
   _ownMatrixInfo: null,
   _matrix: null,
   _parentMatrix: null,
+  
+  _shouldUpdateMatrix: false,
   
   /**
    *  @method init
@@ -154,9 +156,9 @@ GameEngine.Node = GameEngine.Object.extend({
       height = height ? height : 0.0;
     }
     
-    this._width = width;
-    this._height = height;
-    this._contentSize_t = [width, height];
+//    this._width = width;
+//    this._height = height;
+    this._contentSize_t = [0.0, 0.0];
         
     this._x = 0.0;
     this._y = 0.0;
@@ -195,7 +197,7 @@ GameEngine.Node = GameEngine.Object.extend({
     this._matrix = ownMatrix;
     
     this.rectangleArray = new Float32Array(12);
-    this.setContentSize(contentSize);
+    this.setContentSize(newContentSize);
     
     this._update();
   },
@@ -205,8 +207,19 @@ GameEngine.Node = GameEngine.Object.extend({
       child._parent = this;
       child._setScene(this._scene);
       this._children.push(child);
-      
-      this._renderList = null;
+      if (child instanceof GameEngine.Sprite) {
+        var batchArray = child.image.texture.batchArray;
+        if (batchArray) {
+          batchArray.push(child);
+          batchArray.changed = true;
+        }
+        else {
+          this._renderList = null;
+        }
+      }
+      else {
+       this._renderList = null;
+      }
       var scene = this._scene;
       if (scene) {
         scene.dirty = true;
@@ -225,7 +238,7 @@ GameEngine.Node = GameEngine.Object.extend({
     this._scene = scene;
     
     if (this._renderMode === GameEngine.RenderMode.Normal) {
-      this.updateMatrix();
+      this._shouldUpdateMatrix = true;
     }
     this._update();
     
@@ -255,7 +268,7 @@ GameEngine.Node = GameEngine.Object.extend({
   positionInScene: function() {
     var parent = this._parent;
     if (parent) {
-      return parent.convertToScene(this._position);
+      return parent.convertToScene({x: this._x, y: this._y});
     }
     else {
       return this._position;
@@ -289,7 +302,20 @@ GameEngine.Node = GameEngine.Object.extend({
         
         var parentScene = parent._scene;
         if (parentScene) {
-          parentScene._renderList = null;
+          if (this instanceof GameEngine.Sprite) {
+            var batchArray = this.image.texture.batchArray;
+            if (batchArray) {
+              var index = batchArray.indexOf(this);
+              batchArray.splice(index, 1);
+              batchArray.changed = true;
+            }
+            else {
+              parentScene._renderList = null;
+            }
+          }
+          else {
+            parentScene._renderList = null;
+          }
           parentScene.dirty = true;
         }
       }
@@ -333,7 +359,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     var newWidth = newContentSize.width;
     var newHeight = newContentSize.height;
-    
+    console.log("_setContentSize", width, height, newWidth, newHeight);
     if (width === newWidth && height === newHeight) {
       return;
     }
@@ -345,6 +371,7 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   _setContentSize: function(width, height) {
+    console.log("_setContentSize", width, height);
     var sizeChanged = width !== this._width && height !== this._height;
     this._width = width;
     this._height = height;
@@ -352,14 +379,20 @@ GameEngine.Node = GameEngine.Object.extend({
     var contentSize_t = this._contentSize_t;
     contentSize_t[0] = width;
     contentSize_t[1] = height;
-    
-    if (this._isVisible) {
-      this.updateRectangleArray();
-      if (this._renderMode === GameEngine.RenderMode.Normal && sizeChanged) {
-        this.updateMatrix();
+
+      if (this._isVisible) {
+        this.updateRectangleArray();
+        this._update();
       }
-      this._update();
-    }
+      if (this._renderMode === GameEngine.RenderMode.Normal && sizeChanged) {
+        this._originMatrixInfo.shouldUpdate = true;
+        this._anchorScaleMatrixInfo.shouldUpdate = true;
+        this._anchorScaleRotationMatrixInfo.shouldUpdate = true;
+        this._ownMatrixInfo.shouldUpdate = true;
+        
+        this._shouldUpdateMatrix = true;
+        this._update();
+      }
   },
   
   setTouchEnabled: function(enabled) {
@@ -373,7 +406,8 @@ GameEngine.Node = GameEngine.Object.extend({
   _renderList: null,
   
   _getRenderList: function() {
-    if (!this._renderList) {
+    var renderList = this._renderList;
+    if (!renderList) {
       var children = this._children.slice();
       children.push(this);
       children = children.sort(function(node1, node2) {
@@ -392,14 +426,23 @@ GameEngine.Node = GameEngine.Object.extend({
       var batchArray;
       for (var i = 0; i < children.length; i ++) {
         var child = children[i];
+        if (child instanceof GameEngine.ColourNode) {
+        console.log("CHILD", child, child._isVisible);
+        }
+        if (child !== this) {
+          child._prepareForRender();
+        }
         
         if (child !== this && child._zIndex > -1 && (child instanceof GameEngine.Sprite) && child._isVisible) {
           if (previousChild) {
-            if (previousChild.image.texture === child.image.texture) {
+            var texture = child.image.texture;
+            if (previousChild.image.texture === texture) {
               if (!batchArray) {
                 batchArray = [previousChild];
+                texture.batchArray = batchArray;
               }
               batchArray.push(child);
+              batchArray.changed = true;
               child.isAddded = true;
               
               var previousChildIndex = newChildren.indexOf(previousChild);
@@ -453,10 +496,28 @@ GameEngine.Node = GameEngine.Object.extend({
 //      }.bind(this));
       }
       
-      this._renderList = finalList;
+      renderList = finalList;
+      
+      this._renderList = renderList;
+    }
+    else {
+      for (var i = 0; i < renderList.length; i ++) {
+        var child = renderList[i];
+        if (child !== this) {
+          if (child instanceof Array) {
+            for (var y = 0; y < child.length; y ++) {
+              var subChild = child[y];
+              subChild._prepareForRender();
+            }
+          }
+          else {
+            child._prepareForRender();
+          }
+        }
+      }
     }
     
-    return this._renderList;
+    return renderList;
   },
   
   /**
@@ -512,7 +573,7 @@ GameEngine.Node = GameEngine.Object.extend({
     if (this._renderMode === GameEngine.RenderMode.Normal) {
       this._translationMatrixInfo.shouldUpdate = true;
       this._ownMatrixInfo.shouldUpdate = true;
-      this.updateMatrix();
+      this._shouldUpdateMatrix = true;
     }
     this._update();
   },
@@ -535,7 +596,9 @@ GameEngine.Node = GameEngine.Object.extend({
    *
    *  @example node.setAlpha(0.5)
    */
+  _alphaChanged: true,
   setAlpha: function(alpha) {
+    _alphaChanged = true;
     this._alpha = alpha;
     this._update();
   },
@@ -589,7 +652,7 @@ GameEngine.Node = GameEngine.Object.extend({
       this._anchorScaleRotationMatrixInfo.shouldUpdate = true;
       this._ownMatrixInfo.shouldUpdate = true;
       
-      this.updateMatrix();
+      this._shouldUpdateMatrix = true;
     }
     
     this._update();
@@ -606,7 +669,7 @@ GameEngine.Node = GameEngine.Object.extend({
       this._anchorScaleRotationMatrix = null;
       this._ownMatrix = null;
       
-      this.updateMatrix();
+      this._shouldUpdateMatrix = true;
     }
     
     var children = this._children;
@@ -671,7 +734,7 @@ GameEngine.Node = GameEngine.Object.extend({
     
     if (this._renderMode === GameEngine.RenderMode.Normal) {
       this._scaleMatrixInfo.shouldUpdate = true;
-      this.updateMatrix();
+      this._shouldUpdateMatrix = true;
     }
     
     this._update();
@@ -976,7 +1039,7 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
-  rotateBy: function(duration, newRotation, completion) {
+  rotateBy: function(duration, newRotation, repeatCount, completion) {
     var rotation = this._rotation;
     
     var animationKeys = this._animationKeys;
@@ -987,11 +1050,20 @@ GameEngine.Node = GameEngine.Object.extend({
     var gameEngine = GameEngine.sharedEngine;
     
     gameEngine.addScheduledActionWithKey(function() {
-      this._rotateBy(rotation, (!isNaN(parseFloat(newRotation)) && isFinite(newRotation)) ? {x: 0.0, y: 0.0, z: newRotation} : newRotation, now, duration);
+      this._rotateBy(rotation, (!isNaN(parseFloat(newRotation)) && isFinite(newRotation)) ? {x: 0.0, y: 0.0, z: newRotation} : newRotation, now, duration, repeatCount, function() {
+        var animationIndex = animationKeys.indexOf(animationID);
+        if (animationIndex !== -1) {
+          animationKeys.splice(animationID);
+        }
+        
+        if (completion) {
+          completion();
+        }
+      }.bind(this));
     }.bind(this), animationID);
   },
   
-  _rotateBy: function(startDegrees, endDegrees, startTime, duration) {
+  _rotateBy: function(startDegrees, endDegrees, startTime, duration, repeatCount, completion) {
     var rotationStepX = endDegrees.x / duration;
     var rotationStepY = endDegrees.y / duration;
     var rotationStepZ = endDegrees.z / duration;
@@ -999,10 +1071,18 @@ GameEngine.Node = GameEngine.Object.extend({
     var now = Date.now();
     var elapsedTime = ((now - startTime) / 1000.0);
     this.setRotation({x: startDegrees.x + (rotationStepX * elapsedTime), y: startDegrees.y + (rotationStepY * elapsedTime), z: startDegrees.z + (rotationStepZ * elapsedTime)});
+  
+    repeatCount --;
+    if (repeatCount === 0) {
+      if (completion) {
+        completion();
+      }
+    }
   },
   
   _needsInitialUpdate: false,
   _update: function() {
+    this._prepareForRender();
     if (needsUpdate(this)) {
       var scene = this._scene;
       if (scene) {
@@ -1017,6 +1097,8 @@ GameEngine.Node = GameEngine.Object.extend({
   
   _matrix: null,
   updateMatrix: function() {
+    this._shouldUpdateMatrix = false;
+  
     if (this._shouldRender3D) {
       this.update3DMatrix();
     }
@@ -1035,7 +1117,8 @@ GameEngine.Node = GameEngine.Object.extend({
         scaleMatrixInfo.shouldUpdate = false;
         
         var scale = this._scale;
-        makeScale(scale, scale * this._yScaleMultiplier, scaleMatrix);
+        // * this._yScaleMultiplier
+        updateScale(scale, scale, scaleMatrix);
       }
       
       // Rotation
@@ -1047,7 +1130,7 @@ GameEngine.Node = GameEngine.Object.extend({
         var angleInDegrees = this._rotation.z;
         var angleInRadians = angleInDegrees * Math.PI / 180;
       
-        makeRotation(angleInRadians, rotationMatrix);
+        updateRotation(angleInRadians, rotationMatrix);
       }
       
       // Translation
@@ -1057,7 +1140,7 @@ GameEngine.Node = GameEngine.Object.extend({
         translationMatrixInfo.shouldUpdate = false;
         
         //this._yStartTranslation
-        makeTranslation(this._x, this._y, translationMatrix);
+        updateTranslation(this._x, this._y, translationMatrix);
       }
       
       // Anchor Point
@@ -1067,7 +1150,7 @@ GameEngine.Node = GameEngine.Object.extend({
         originMatrixInfo.shouldUpdate = false;
         
         var anchorPoint = this._anchorPoint;
-        makeTranslation(- width * anchorPoint.x, - height * anchorPoint.y, originMatrix);
+        updateTranslation(- width * anchorPoint.x, - height * anchorPoint.y, originMatrix);
       }
       
       // Multiply them
@@ -1076,7 +1159,7 @@ GameEngine.Node = GameEngine.Object.extend({
       if (anchorScaleMatrixInfo.shouldUpdate) {
         anchorScaleMatrixInfo.shouldUpdate = false;
       
-        matrixMultiply(originMatrix, scaleMatrix, anchorScaleMatrix);
+        simpleMatrixMultiply(originMatrix, scaleMatrix, anchorScaleMatrix);
       }
       
       var anchorScaleRotationMatrixInfo = this._anchorScaleRotationMatrixInfo;
@@ -1084,20 +1167,21 @@ GameEngine.Node = GameEngine.Object.extend({
       if (anchorScaleRotationMatrixInfo.shouldUpdate) {
         anchorScaleRotationMatrixInfo.shouldUpdate = false;
       
-        matrixMultiply(anchorScaleMatrix, rotationMatrix, anchorScaleRotationMatrix);
+        simpleMatrixMultiply(anchorScaleMatrix, rotationMatrix, anchorScaleRotationMatrix);
       }
       
       var ownMatrixInfo = this._ownMatrixInfo;
       var ownMatrix = ownMatrixInfo.matrix;
       if (ownMatrixInfo.shouldUpdate) {
         ownMatrixInfo.shouldUpdate = false;
-      
-        matrixMultiply(anchorScaleRotationMatrix, translationMatrix, ownMatrix);
+        
+        multiplyAnchorScaleMatrixWithRotationMatrix(anchorScaleRotationMatrix, translationMatrix, ownMatrix);
       }
       
       var matrix;
-      if (this._parent && this._parent._matrix) {
-        matrix = matrixMultiply(ownMatrix, this._parent._matrix, this._parentMatrix);
+      var parent = this._parent;
+      if (parent && parent._matrix && !parent._isScene) {
+        matrix = simpleMatrixMultiply(ownMatrix, this._parent._matrix, this._parentMatrix);
       }
       else {
         matrix = ownMatrix;
@@ -1142,9 +1226,35 @@ GameEngine.Node = GameEngine.Object.extend({
         var isVisible = rectInsideRect(frame, sceneFrame);
         if (this._isVisible !== isVisible) {
           this._isVisible = isVisible;
-          scene._renderList = null;
+//          scene._renderList = null;
           this.updateRectangleArray();
-          this._update();
+          
+          if (this instanceof GameEngine.Sprite) {
+            var texture = this.image.texture;
+            var batchArray = texture.batchArray;
+//            console.log("batchArray", batchArray);
+            if (batchArray) {
+              if (isVisible) {
+                var index = batchArray.indexOf(this);
+                if (index === -1) {
+                  batchArray.push(this);
+                  batchArray.changed = true;
+                }
+              }
+              else {
+                var index = batchArray.indexOf(this);
+                batchArray.splice(index, 1);
+                batchArray.changed = true;
+                
+                if (batchArray.length === 0) {
+                  texture.batchArray = null;
+                  scene._renderList = null;
+                }
+              }
+            }
+          }
+          
+//          this._update();
         }
       }
       
@@ -1234,8 +1344,11 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   _texturePadding: {left: 0.0, bottom: 0.0, right: 0.0, top: 0.0},
+  _rectangleArrayChanged: true,
   updateRectangleArray: function() {
-  
+//    console.log("updateRectangleArray", updateRectangleArray);
+    this._rectangleArrayChanged = true;
+    
     var width = this._width;
     var height = this._height;
     
@@ -1278,10 +1391,14 @@ GameEngine.Node = GameEngine.Object.extend({
     }
   },
   
-  renderForCanvas: function() {
+  _prepareForRender: function() {
+    if (this._shouldUpdateMatrix) {
+      this.updateMatrix();
+    }
   },
   
   render: function() {
+    this._prepareForRender();
     GameEngine.nodeRenderer.render(this);
 //    this._renderer.render(this);
   }

@@ -6,6 +6,7 @@
  */
 GameEngine.ColourNode = GameEngine.Node.extend({
   _className: "GameEngine.ColourNode",
+  _isVisible: true,
 
   /**
    *  @property {Dictionary} colour
@@ -24,7 +25,7 @@ GameEngine.ColourNode = GameEngine.Node.extend({
   init: function(contentSize, colour) {
     this._super(contentSize);
     
-    if (color) {
+    if (colour) {
       this._colour = colour;
     }
   

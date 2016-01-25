@@ -39,6 +39,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
     }.bind(this));
   },
   
+  _batchRectangleTextureChanged: true,
   setFrameImage: function(frameFileName) {
     var atlas = this._atlas;
     var image = this.image;
@@ -64,7 +65,7 @@ GameEngine.Sprite = GameEngine.Node.extend({
     var inFrame = foundFrame.frame;
     var frame = {x: inFrame.x, y: inFrame.y, width: inFrame.w, height: inFrame.h};
     var sourceSize = foundFrame["spriteSourceSize"];
-    this._texturePadding = {left: sourceSize.w - frame.width - sourceSize.x, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.x, top: sourceSize.y};
+    this._texturePadding = {left: sourceSize.x /*sourceSize.w - frame.width - */, bottom: sourceSize.h - frame.height - sourceSize.y, right: sourceSize.w - frame.width - sourceSize.x, top: sourceSize.y};
     this._setContentSize(sourceSize.w, sourceSize.h);
     
     var pTextureFrame = this.textureFrame;
@@ -97,11 +98,12 @@ GameEngine.Sprite = GameEngine.Node.extend({
 //    );
     
     this.batchRectangleTextureArray = new Float32Array([
-      frame.x + frame.width,  frame.y + frame.height,
-      frame.x + frame.width,  frame.y,
       frame.x,                frame.y,
-      frame.x,                frame.y + frame.height
+      frame.x,                frame.y + frame.height,
+      frame.x + frame.width,  frame.y + frame.height,
+      frame.x + frame.width,  frame.y
     ]);
+    this._batchRectangleTextureChanged = true;
     
     this.rectangleTextureArray = new Float32Array([
       frame.x,                frame.y,
@@ -218,8 +220,10 @@ GameEngine.Sprite = GameEngine.Node.extend({
     }
   },
   
-  _shouldUpdateOverlayColour: false,
+  _overlayColourChanged: true,
   setOverlayColour: function(overlayColour) {
+    _overlayColourChanged = true;
+  
     this._overlayColour = overlayColour;
   
     var shouldRender3D = this._shouldRender3D;

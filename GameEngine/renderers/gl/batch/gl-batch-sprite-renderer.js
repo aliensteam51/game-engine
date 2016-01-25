@@ -6,7 +6,7 @@ GameEngine.GLBatchSpriteRenderer = GameEngine.GLBatchNodeRenderer.extend({
   setupGL: function() {
     this._super();
   
-    var gl = getGL();
+    var gl = this._gl;
     var programKeys = this._programKeys;
     for (var i = 0; i < programKeys.length; i ++) {
       var programKey = programKeys[i];
@@ -27,71 +27,113 @@ GameEngine.GLBatchSpriteRenderer = GameEngine.GLBatchNodeRenderer.extend({
   
   render: function(sprites) {
     var sprite = sprites[0];
-  
-    var gl = getGL();
-    var shouldRender3D = sprite._shouldRender3D;
+    
+    var gl = this._gl;
     var renderMode = sprites[0]._renderMode;
-    
     var program = this[this._programKeys[renderMode]];
-    gl.useProgram(program);
     
-    // Bind the texture
-    gl.bindTexture(gl.TEXTURE_2D, sprites[0].texture);
+    var batchChanged = sprites.changed;
     
-    // Create a rectangle array
-      var rectangleTextureArray = new Float32Array(sprites.length * 8);
-      for (var i = 0; i < sprites.length; i ++) {
-        var index = i * 8;
-        var sprite = sprites[i];
-        var spriteRectangleTextureArray = sprite.batchRectangleTextureArray;
-        
-        rectangleTextureArray[index + 0] = spriteRectangleTextureArray ? spriteRectangleTextureArray[0] : 1.0;
-        rectangleTextureArray[index + 1] = spriteRectangleTextureArray ? spriteRectangleTextureArray[1] : 1.0;
-        
-        rectangleTextureArray[index + 2] = spriteRectangleTextureArray ? spriteRectangleTextureArray[2] : 1.0;
-        rectangleTextureArray[index + 3] = spriteRectangleTextureArray ? spriteRectangleTextureArray[3] : 0.0
-        
-        rectangleTextureArray[index + 4] = spriteRectangleTextureArray ? spriteRectangleTextureArray[4] : 0.0;
-        rectangleTextureArray[index + 5] = spriteRectangleTextureArray ? spriteRectangleTextureArray[5] : 0.0;
-        
-        rectangleTextureArray[index + 6] = spriteRectangleTextureArray ? spriteRectangleTextureArray[6] : 0.0;
-        rectangleTextureArray[index + 7] = spriteRectangleTextureArray ? spriteRectangleTextureArray[7] : 1.0;
-      }
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, program.texCoordBuffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, rectangleTextureArray);
-    
-    gl.enableVertexAttribArray(program.texCoordLocation);
-    gl.vertexAttribPointer(program.texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-    
-    // OVERLAY COLOUR
-    var overlayColourBuffer = program.overlayColourBuffer;
-    var overlayArraySize = overlayColourBuffer.arraySize;
-    var overlayElemSize = overlayColourBuffer.elemSize;
-    var overlayColourArray = new Float32Array(sprites.length * overlayArraySize * overlayElemSize);
-    for (var x = 0; x < sprites.length; x ++) {
-      var sprite = sprites[x];
-      var overlayColour = sprite._overlayColour;
-      if (!overlayColour) {
-        overlayColour = {r: 0.0, g: 0.0, b: 0.0, a: 0.0};
-      }
-      
-      for (var i = 0; i < overlayArraySize; i ++) {
-        var index = i * overlayElemSize;
-        overlayColourArray[index] = overlayColour.r;
-        overlayColourArray[index + 1] = overlayColour.g;
-        overlayColourArray[index + 2] = overlayColour.b;
-        overlayColourArray[index + 3] = overlayColour.a;
-      }
-    }
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, overlayColourBuffer);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, overlayColourArray);
+    var texCoordLocation = program.texCoordLocation;
+    var texCoordBuffer = program.texCoordBuffer;
+    var texCoordArray = texCoordBuffer.array;
+    var texCoordElemSize = texCoordBuffer.elemSize;
+    var texCoordArraySize = texCoordBuffer.arraySize;
+    var texCoordIndex = 0;
+    var textCoordModified = batchChanged;
     
     var overlayColourLocation = program.overlayColourLocation;
-    gl.enableVertexAttribArray(overlayColourLocation);
-    gl.vertexAttribPointer(overlayColourLocation, 4, gl.FLOAT, false, 0, 0);
+    var overlayColourBuffer = program.overlayColourBuffer;
+    var overlayColourArray = overlayColourBuffer.array;
+    var overlayColourElemSize = overlayColourBuffer.elemSize;
+    var overlayColourArraySize = overlayColourBuffer.arraySize;
+    var overlayColourIndex = 0;
+    var overlayColourModified = batchChanged;
     
-    this._super(sprites);
+    var nodeFunction = function(sprite) {
+      // TEXTURE POSITIONS
+//      if (sprite._batchRectangleTextureChanged) {
+//        sprite._batchRectangleTextureChanged = false;
+        textCoordModified = true;
+      
+        var spriteRectangleTextureArray = sprite.batchRectangleTextureArray;
+        if (spriteRectangleTextureArray) {
+            texCoordArray[texCoordIndex + 0] = spriteRectangleTextureArray[0];
+            texCoordArray[texCoordIndex + 1] = spriteRectangleTextureArray[1];
+            
+            texCoordArray[texCoordIndex + 2] = spriteRectangleTextureArray[2];
+            texCoordArray[texCoordIndex + 3] = spriteRectangleTextureArray[3];
+            
+            texCoordArray[texCoordIndex + 4] = spriteRectangleTextureArray[4];
+            texCoordArray[texCoordIndex + 5] = spriteRectangleTextureArray[5];
+            
+            texCoordArray[texCoordIndex + 6] = spriteRectangleTextureArray[6];
+            texCoordArray[texCoordIndex + 7] = spriteRectangleTextureArray[7];
+        }
+        else {
+          texCoordArray[texCoordIndex + 0] = 1.0;
+          texCoordArray[texCoordIndex + 1] = 1.0;
+          
+          texCoordArray[texCoordIndex + 2] = 1.0;
+          texCoordArray[texCoordIndex + 3] = 0.0
+          
+          texCoordArray[texCoordIndex + 4] = 0.0;
+          texCoordArray[texCoordIndex + 5] = 0.0;
+          
+          texCoordArray[texCoordIndex + 6] = 0.0;
+          texCoordArray[texCoordIndex + 7] = 1.0;
+        }
+//      }
+      
+      texCoordIndex += 8;
+      
+      // OVERLAY COLOUR
+      if (sprite._overlayColourChanged) {
+        sprite._overlayColourChanged = false;
+        overlayColourModified = true;
+      
+        var overlayColour = sprite._overlayColour;
+        if (!overlayColour) {
+          overlayColour = {r: 0.0, g: 0.0, b: 0.0, a: 0.0};
+        }
+        
+        for (var i = 0; i < overlayColourArraySize; i ++) {
+          overlayColourArray[overlayColourIndex] = overlayColour.r;
+          overlayColourArray[overlayColourIndex + 1] = overlayColour.g;
+          overlayColourArray[overlayColourIndex + 2] = overlayColour.b;
+          overlayColourArray[overlayColourIndex + 3] = overlayColour.a;
+          
+          overlayColourIndex += 4;
+        }
+      }
+      else {
+        overlayColourIndex += 4 * overlayColourArraySize;
+      }
+    };
+    
+    var endFunction = function() {
+      // Bind the texture
+      gl.bindTexture(gl.TEXTURE_2D, sprites[0].texture);
+      
+//      if (textCoordModified) {
+        // TEXTURE POSITIONS
+        gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, texCoordArray);
+        
+        gl.enableVertexAttribArray(texCoordLocation);
+        gl.vertexAttribPointer(texCoordLocation, texCoordElemSize, gl.FLOAT, false, 0, 0);
+//      }
+      
+      if (overlayColourModified) {
+        // OVERLAY COLOUR
+        gl.bindBuffer(gl.ARRAY_BUFFER, overlayColourBuffer);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, overlayColourArray);
+      
+        gl.enableVertexAttribArray(overlayColourLocation);
+        gl.vertexAttribPointer(overlayColourLocation, overlayColourElemSize, gl.FLOAT, false, 0, 0);
+      }
+    };
+    
+    this._super(sprites, nodeFunction, endFunction);
   }
 });
