@@ -359,7 +359,6 @@ GameEngine.Node = GameEngine.Object.extend({
     
     var newWidth = newContentSize.width;
     var newHeight = newContentSize.height;
-    console.log("_setContentSize", width, height, newWidth, newHeight);
     if (width === newWidth && height === newHeight) {
       return;
     }
@@ -371,7 +370,6 @@ GameEngine.Node = GameEngine.Object.extend({
   },
   
   _setContentSize: function(width, height) {
-    console.log("_setContentSize", width, height);
     var sizeChanged = width !== this._width && height !== this._height;
     this._width = width;
     this._height = height;
@@ -977,7 +975,6 @@ GameEngine.Node = GameEngine.Object.extend({
     }
     
     this.setScale(scale);
-    
     if (scale === newScale) {
       if (completion) {
         completion();
@@ -1257,6 +1254,8 @@ GameEngine.Node = GameEngine.Object.extend({
 //          this._update();
         }
       }
+      
+      this._matrix = matrix;
       
       var children = this._children;
       for (var i = 0; i < children.length; i ++) {

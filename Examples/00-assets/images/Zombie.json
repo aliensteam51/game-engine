@@ -1,0 +1,214 @@
+{
+  "frames" : [
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "filename" : "go_1.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 40,
+        "h" : 63
+      },
+      "filename" : "go_2.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 80,
+        "h" : 63
+      },
+      "filename" : "go_3.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 120,
+        "h" : 63
+      },
+      "filename" : "go_4.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 160,
+        "h" : 63
+      },
+      "filename" : "go_5.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 200,
+        "h" : 63
+      },
+      "filename" : "go_6.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 240,
+        "h" : 63
+      },
+      "filename" : "go_7.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 280,
+        "h" : 63
+      },
+      "filename" : "go_8.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 320,
+        "h" : 63
+      },
+      "filename" : "go_9.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    },
+    {
+      "frame" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 360,
+        "h" : 63
+      },
+      "filename" : "go_10.png",
+      "spriteSourceSize" : {
+        "y" : 0,
+        "w" : 40,
+        "x" : 0,
+        "h" : 63
+      },
+      "rotated" : false,
+      "trimmed" : true,
+      "sourceSize" : {
+        "w" : 40,
+        "h" : 63
+      }
+    }
+  ]
+}

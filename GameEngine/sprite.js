@@ -240,13 +240,14 @@ GameEngine.Sprite = GameEngine.Node.extend({
   },
   
   frameDictionary: {},
-  startFrameAnimation: function(imageNames, frameDuration, loop, completion) {
+  startFrameAnimation: function(imageNames, frameDuration, loopMode, completion) {
     var index = 0;
     
     var then = Date.now();
     var interval = frameDuration * 1000.0;
     
     var key = "_startFrameAnimation_";
+	var moveForward = true;
     
     var gameEngine = GameEngine.sharedEngine;
     gameEngine.addScheduledActionWithKey(function(delta) {
@@ -256,10 +257,19 @@ GameEngine.Sprite = GameEngine.Node.extend({
       if (delta >= interval) {
         then = now;
       
-        if (index >= imageNames.length) {
-          if (loop) {
+        if (index >= imageNames.length || index <= -1) {
+          if (loopMode === 1) {
             index = 0;
           }
+		  else if (loopMode === 2) {
+			if (index >= imageNames.length) {
+			  index --;
+			}
+			else {
+			  index ++;
+			}
+			moveForward = !moveForward;
+		  }
           else {
             gameEngine.removeScheduledActionWithKey(key);
             return;
@@ -267,7 +277,12 @@ GameEngine.Sprite = GameEngine.Node.extend({
         }
         
         this.setFrameImage(imageNames[index]);
-        index ++;
+		if (moveForward === true) {
+			index ++;
+		}
+		else {
+			index --;
+		}
       }
     }.bind(this), key + this._id);
   },

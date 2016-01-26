@@ -1,0 +1,65 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1"></meta>
+    <title>Example - 01 Load an Image</title>
+    
+    <script type="text/javascript" src="../../../game-engine/GameEngine/webgl-base.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/utils.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/base.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/enums.js"></script>
+    
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/gl-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/gl-node-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/gl-sprite-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/gl-colour-node-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/batch/gl-batch-node-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/batch/gl-batch-sprite-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/gl/batch/gl-batch-colour-node-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/canvas/canvas-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/canvas/canvas-node-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/canvas/canvas-sprite-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/canvas/canvas-colour-node-renderer.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/renderers/render-manager.js"></script>
+
+    <script type="text/javascript" src="../../../game-engine/GameEngine/game-engine.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/node.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/scene.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/colour-node.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/sprite.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/effecthelper.js"></script>
+    <script type="text/javascript" src="../../../game-engine/GameEngine/sound/soundplayer.js"></script>
+    
+    <script id="sprite.fsh" type="x-shader/x-fragment" src="../../../game-engine/GameEngine/shaders/sprite.fsh"></script>
+    <script id="sprite.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/sprite.vsh"></script>
+    <script id="sprite-3d.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/sprite-3d.vsh"></script>
+    <script id="simple-sprite.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/simple-sprite.vsh"></script>
+    <script id="node.fsh" type="x-shader/x-fragment" src="../../../game-engine/GameEngine/shaders/node.fsh"></script>
+    <script id="node.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/node.vsh"></script>
+    <script id="node-3d.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/node-3d.vsh"></script>
+    <script id="simple-node.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/simple-node.vsh"></script>
+    <script id="color-node.fsh" type="x-shader/x-fragment" src="../../../game-engine/GameEngine/shaders/color-node.fsh"></script>
+    
+    <script id="batch-sprite.fsh" type="x-shader/x-fragment" src="../../../game-engine/GameEngine/shaders/batch/sprite.fsh"></script>
+    <script id="batch-sprite.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/batch/sprite.vsh"></script>
+    <script id="batch-sprite-3d.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/batch/sprite-3d.vsh"></script>
+    <script id="simple-batch-sprite.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/batch/simple-sprite.vsh"></script>
+    <script id="batch-node.fsh" type="x-shader/x-fragment" src="../../../game-engine/GameEngine/shaders/batch/node.fsh"></script>
+    <script id="batch-node.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/batch/node.vsh"></script>
+    <script id="batch-node-3d.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/batch/node-3d.vsh"></script>
+    <script id="simple-batch-node.vsh" type="x-shader/x-vertex" src="../../../game-engine/GameEngine/shaders/batch/simple-node.vsh"></script>
+    <script id="batch-color-node.fsh" type="x-shader/x-fragment" src="../../../game-engine/GameEngine/shaders/batch/color-node.fsh"></script>
+    
+    
+    <script type="text/javascript" src="main.js"></script>
+  </head>
+  <body onload="main();" style="background-color: black;" link="white">
+	<div style="text-align: center; color: white;">Example - 01 Load an Image (based on Phaser example)</div>
+    <div id="GameContainer" style="position:relative; margin-left:auto; margin-right:auto; margin-top: 100px; width: 800px; height: 600px;">
+    <canvas id="glCanvas" style="border: none; left:0px; top:0px; background-color: green;" width="800" height="600"></canvas>
+    </div>
+    <div style="margin-left:auto; margin-right:auto; width: 100px;"><a href="../index.html"><-- Back</a></div>
+	<div style="text-align: center; color: white;">Concept art image by <a href="http://opengameart.org/users/5hiroi" target="_blank">5hiroi</a>, thank you!!!</div>
+  </body>
+</html>
