@@ -14,7 +14,7 @@ It all began when I worked on different projects with different web game engines
 - Don't render objects that are out of scene bounds (**partly implemented**)
 - Automaticly render simple sprites that use the same texture in batch (glDrawElements, **implemented**)
 - Implement basic game engine features (**partly implemented**)
-- Implement advances game engine features (**not implemented yet**)
+- Implement advanced game engine features (**not implemented yet**)
 - Automatically switch shader programs based on the current needs of an node/sprite (**partly implemented**)
 
 ## Code Syntax
