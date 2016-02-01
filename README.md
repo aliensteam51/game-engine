@@ -1,12 +1,12 @@
-# GameEngine
+# AlienEngine
 
-![Penguin](https://raw.githubusercontent.com/aliensteam51/game-engine/master/Examples/00-assets/images/Penguin.png)
+![Penguin](https://raw.githubusercontent.com/aliensteam51/game-engine/master/Images/Beer.png)
 
-In short **GameEngine** is a web game engine focussed on performance!
+In short **AlienEngine** is a web game engine focussed on performance!
 
 ## History
 
-It all began when I worked on different projects with different web game engines. These projects required the games to work on both desktop computers and mobile devices. I noticed that the game engines we used, required a lot of processor power, even when showing a still image! So I deciced to make an own game engine which doesn't render when nothing changes. So **GameEngine** was born.
+It all began when I worked on different projects with different web game engines. These projects required the games to work on both desktop computers and mobile devices. I noticed that the game engines we used, required a lot of processor power, even when showing a still image! So I deciced to make an own game engine which doesn't render when nothing changes. So **AlienEngine** was born.
 
 ## Goals
 
@@ -19,27 +19,27 @@ It all began when I worked on different projects with different web game engines
 
 ## Code Syntax
 
-The code syntax used in **GameEngine** is based on other engines like Cocos2D (X, iOS/Mac) and SpriteKit. The example below comes straight out of one of the examples included here on the repository:
+The code syntax used in **AlienEngine** is based on other engines like Cocos2D (X, Mac/iOS) and SpriteKit (Mac/iOS). The example below comes straight out of one of the examples included here on the repository:
 
 ```javascript
 function main() {
   preloadFiles(["../00-assets/images/Dance_of_Rebirth_by_shiroikuro.jpg"], function() {
     var contentSize = {width: 800.0, height: 600.0};
   
-    var scene = new GameEngine.Scene({width: contentSize.width, height: contentSize.height});
-    var sprite = new GameEngine.Sprite("../00-assets/images/Dance_of_Rebirth_by_shiroikuro.jpg");
+    var scene = new AlienEngine.Scene({width: contentSize.width, height: contentSize.height});
+    var sprite = new AlienEngine.Sprite("../00-assets/images/Dance_of_Rebirth_by_shiroikuro.jpg");
     var spriteSize = sprite.getContentSize();
     sprite.setAnchorPoint({x: 0.0, y: 0.0});
     sprite.setPosition({x: 0.0, y: contentSize.height - spriteSize.height});
     scene.addChild(sprite);
-    GameEngine.sharedEngine.start();
-    GameEngine.sharedEngine.presentScene(scene);
+    AlienEngine.sharedEngine.start();
+    AlienEngine.sharedEngine.presentScene(scene);
   });
 }
 ```
 ## Other Engines
 
-**GameEngine** is currently focussing on performance above features, it's also in alpha state right now. It's always important to compare different engines when choosing one!!! :-)
+**AlienEngine** is currently focussing on performance above features, it's also in alpha state right now. It's always important to compare different engines when choosing one!!! :-)
 
 |Engine|Website|
 |------|-------|
